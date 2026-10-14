@@ -83,6 +83,7 @@ let currentLevelIdx = 0;
 let functionsList = [];
 let isDriving = false;
 let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false };
+let particles = []; // Voor confetti-effect
 
 // Canvas Geometry
 const canvas = document.getElementById('graphCanvas');
@@ -224,6 +225,7 @@ function resetCarState() {
     crashed: false,
     won: false
   };
+  particles = [];
 
   const startBtn = document.getElementById('startDriveBtn');
   startBtn.classList.remove('reset-state');
@@ -231,9 +233,41 @@ function resetCarState() {
   document.getElementById('startIcon').className = 'fa-solid fa-play';
 }
 
-// --- PHYSICS ENGINE (STRICT ANTI-TUNNELING & VERTICAL WALL COLLISION) ---
+function triggerConfetti(targetX, targetY) {
+  const cx = toCanvasX(targetX);
+  const cy = toCanvasY(targetY);
+  const particleColors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#e67e22'];
+
+  for (let i = 0; i < 100; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 8;
+    particles.push({
+      x: cx,
+      y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      color: particleColors[Math.floor(Math.random() * particleColors.length)],
+      size: 4 + Math.random() * 6,
+      alpha: 1.0,
+      decay: 0.015 + Math.random() * 0.02
+    });
+  }
+}
+
+// --- PHYSICS ENGINE (STRICT ELASTIC BOUNCE & VERTICAL WALL COLLISION) ---
 function physicsTick() {
-  if (!isDriving || car.crashed || car.won) return;
+  if (car.crashed) return;
+
+  // Update confetti deeltjes altijd als die er zijn
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2; // zwaartekracht op confetti
+    p.alpha -= p.decay;
+  });
+  particles = particles.filter(p => p.alpha > 0);
+
+  if (!isDriving || car.won) return;
 
   const lvl = LEVELS[currentLevelIdx];
   const dt = 1 / 60;
@@ -244,24 +278,22 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Controleer op botsing met verticale muren (x = getal)
+    // 1. Controleer op elastische botsing met verticale muren (x = getal)
     let hitVerticalWall = false;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        // Auto breedte radius is ongeveer 0.5 (van x - 0.45 tot x + 0.45)
         if (car.x + 0.45 >= vertX && car.x - 0.45 <= vertX) {
           hitVerticalWall = true;
-          car.x = vertX - 0.45; // Duw de auto precies tegen de muur aan
-          car.vx = 0; // Stop de voorwaartse snelheid
+          car.x = vertX - (car.vx > 0 ? 0.46 : -0.46);
+          // Weerkaatsing gebaseerd op snelheid (elastische botsing met energiebehoud factor 0.5)
+          car.vx = -car.vx * 0.5;
         }
       }
     });
 
-    if (hitVerticalWall) {
-      continue; // Sla de rest van deze substep over om door de muur heen glijden te voorkomen
-    }
+    if (hitVerticalWall) continue;
 
     let highestY = -Infinity;
     let surfaceAngle = 0;
@@ -286,7 +318,7 @@ function physicsTick() {
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) return; // Al behandeld
+      if (vertX !== null) return;
 
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
@@ -340,8 +372,9 @@ function physicsTick() {
   }
 
   const distToTarget = Math.hypot(car.x - lvl.target.x, car.y - lvl.target.y);
-  if (distToTarget < 0.8) {
+  if (distToTarget < 0.8 && !car.won) {
     car.won = true;
+    triggerConfetti(lvl.target.x, lvl.target.y);
   }
 
   if (car.y < -12) {
@@ -361,6 +394,7 @@ function renderLoop() {
   drawFlags();
   drawFunctions();
   drawCar();
+  drawConfetti();
   drawVersionText();
 
   requestAnimationFrame(renderLoop);
@@ -499,13 +533,23 @@ function drawCar() {
   ctx.restore();
 }
 
+function drawConfetti() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+    ctx.restore();
+  });
+}
+
 function drawVersionText() {
   ctx.save();
   ctx.font = '12px sans-serif';
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.10', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.11', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
