@@ -80,7 +80,6 @@ function evaluateMath(exprStr, xVal) {
 
     if (xVal < domainMin || xVal > domainMax) return null;
 
-    // Standardize implicit multiplication (e.g. 2x -> 2*x)
     clean = clean.replace(/(\d)(x)/g, '$1*$2');
     clean = clean.replace(/x\^2/g, '(x*x)');
     clean = clean.replace(/\^/g, '**');
@@ -129,14 +128,14 @@ const LEVELS = [
 
 // --- MAIN APPLICATION STATE ---
 let currentLevelIdx = 0;
-let functionsList = []; // Array of string expressions
+let functionsList = [];
 let isDriving = false;
 let car = { x: -6, y: -2, vx: 0, vy: 0, rotation: 0, grounded: false, crashed: false, won: false };
 
 // Canvas Geometry
 const canvas = document.getElementById('graphCanvas');
 const ctx = canvas.getContext('2d');
-let scale = 40; // Pixels per unit
+let scale = 40;
 let originX = 0;
 let originY = 0;
 
@@ -150,7 +149,6 @@ function initApp() {
   
   loadLevel(currentLevelIdx);
 
-  // Event Listeners
   document.getElementById('addExprBtn').addEventListener('click', () => addFunctionRow(''));
   document.getElementById('addExprRowBtn').addEventListener('click', () => addFunctionRow(''));
   document.getElementById('prevLevelBtn').addEventListener('click', () => changeLevel(-1));
@@ -158,7 +156,6 @@ function initApp() {
   document.getElementById('startDriveBtn').addEventListener('click', toggleDrive);
   document.getElementById('resetBtn').addEventListener('click', () => resetCarState());
 
-  // 60 Ticks / Second Loop
   setInterval(physicsTick, 1000 / 60);
   requestAnimationFrame(renderLoop);
 }
@@ -187,7 +184,6 @@ function changeLevel(delta) {
   }
 }
 
-// Controleert of er een lege expressie onderaan staat. Zo niet, voeg er direct een toe.
 function ensureTrailingEmptyExpression() {
   const hasEmptyAtEnd = functionsList.length > 0 && functionsList[functionsList.length - 1].trim() === '';
   if (!hasEmptyAtEnd) {
@@ -199,7 +195,6 @@ function ensureTrailingEmptyExpression() {
 function renderExpressionList() {
   const container = document.getElementById('expressionList');
   
-  // Remove existing function rows
   const oldRows = container.querySelectorAll('.function-row');
   oldRows.forEach(r => r.remove());
 
@@ -229,13 +224,10 @@ function renderExpressionList() {
     container.appendChild(row);
   });
 
-  // Attach input listeners
   container.querySelectorAll('.math-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.index);
       functionsList[idx] = e.target.value;
-      
-      // Altijd een lege expressie onderaan neerzetten als er geen lege is
       ensureTrailingEmptyExpression();
     });
   });
@@ -244,7 +236,6 @@ function renderExpressionList() {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(btn.closest('.delete-row-btn').dataset.index);
       functionsList.splice(idx, 1);
-      
       ensureTrailingEmptyExpression();
       renderExpressionList();
     });
@@ -296,7 +287,7 @@ function physicsTick() {
   const lvl = LEVELS[currentLevelIdx];
   const dt = 1 / 60;
   const gravity = -18;
-  const enginePower = 3.2;
+  const enginePower = 3.5; // Continue continue aandrijfkracht
 
   let highestY = -Infinity;
   let surfaceAngle = 0;
@@ -327,23 +318,27 @@ function physicsTick() {
     }
   });
 
-  const onGround = (car.y <= highestY + 0.08) && (car.y >= highestY - 0.4) && (car.vy <= 0);
+  const onGround = (car.y <= highestY + 0.1) && (car.y >= highestY - 0.4) && (car.vy <= 0);
 
   if (onGround) {
     car.y = highestY;
     car.vy = 0;
     car.grounded = true;
 
+    // Altijd blijven rijden: minimale voorwaartse snelheid garanderen zodat de auto nooit permanent stilvalt
+    if (car.vx < 0.8) {
+      car.vx = 0.8; 
+    }
+
     const angleDeg = surfaceAngle * (180 / Math.PI);
 
-    if (angleDeg > 45) {
-      car.vx *= 0.85;
-      if (car.vx < 0.2) car.vx = 0;
-      sounds.playCrash();
+    if (angleDeg > 55) {
+      // Zeer steile wanden remmen af, maar stoppen nooit volledig
+      car.vx = Math.max(0.5, car.vx * 0.92);
     } else {
       const slopeFactor = Math.cos(surfaceAngle);
-      car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 4.5);
-      sounds.playEngine(car.vx / 4.5);
+      car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 5.0);
+      sounds.playEngine(car.vx / 5.0);
     }
 
     car.rotation = surfaceAngle;
