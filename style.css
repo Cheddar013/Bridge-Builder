@@ -75,7 +75,6 @@ body, html {
 .expr-row {
   display: flex;
   min-height: 52px;
-  border-bottom: 1px solid #dc0c0c00;
   border-bottom: 1px solid #e0e0e0;
   background-color: #ffffff;
   position: relative;
@@ -100,7 +99,6 @@ body, html {
   left: 6px;
 }
 
-/* Desmos Icon SVG Container */
 .desmos-icon-wrapper {
   width: 26px;
   height: 26px;
@@ -234,7 +232,6 @@ body, html {
   display: block;
 }
 
-/* Canvas Overlay Controls */
 .canvas-controls {
   position: absolute;
   top: 16px;

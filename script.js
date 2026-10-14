@@ -60,7 +60,6 @@ function evaluateMath(exprStr, xVal) {
     let clean = exprStr.replace(/\s+/g, '').toLowerCase();
     if (clean.startsWith('y=')) clean = clean.substring(2);
 
-    // Extract domain restriction e.g. {x<2}
     let domainMin = -Infinity;
     let domainMax = Infinity;
     const domainMatch = clean.match(/\{([^}]+)\}/);
@@ -287,7 +286,7 @@ function physicsTick() {
   const lvl = LEVELS[currentLevelIdx];
   const dt = 1 / 60;
   const gravity = -18;
-  const enginePower = 3.5; // Continue continue aandrijfkracht
+  const enginePower = 3.5;
 
   let highestY = -Infinity;
   let surfaceAngle = 0;
@@ -325,7 +324,6 @@ function physicsTick() {
     car.vy = 0;
     car.grounded = true;
 
-    // Altijd blijven rijden: minimale voorwaartse snelheid garanderen zodat de auto nooit permanent stilvalt
     if (car.vx < 0.8) {
       car.vx = 0.8; 
     }
@@ -333,7 +331,6 @@ function physicsTick() {
     const angleDeg = surfaceAngle * (180 / Math.PI);
 
     if (angleDeg > 55) {
-      // Zeer steile wanden remmen af, maar stoppen nooit volledig
       car.vx = Math.max(0.5, car.vx * 0.92);
     } else {
       const slopeFactor = Math.cos(surfaceAngle);
@@ -377,6 +374,7 @@ function renderLoop() {
   drawFlags();
   drawFunctions();
   drawCar();
+  drawVersionText();
 
   requestAnimationFrame(renderLoop);
 }
@@ -501,6 +499,16 @@ function drawCar() {
   ctx.arc(10, -2, 5, 0, Math.PI * 2);
   ctx.fill();
 
+  ctx.restore();
+}
+
+function drawVersionText() {
+  ctx.save();
+  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#b0b0b0';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('v0.1.0.4', canvas.width - 12, canvas.height - 12);
   ctx.restore();
 }
 
