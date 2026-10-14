@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE ---
+// --- PHYSICS ENGINE (ANTI-PHASING / ANTI-TUNNELING) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -273,7 +273,7 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  const substeps = 4;
+  const substeps = 8; // Meer substeps om phasen absoluut te voorkomen
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
@@ -323,7 +323,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 4. Check functies nabij de huidige verticale positie van de auto
+    // 4. Check functies nabij de auto om doorheen vallen (phasing) te blokkeren
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -332,21 +332,23 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          // Zoek de functie die het dichtst bij de huidige autohoogte ligt (zodat we de huidige y-positie behouden)
-          if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
-            const delta = 0.001;
-            const y2 = evaluateMath(expr, car.x + delta);
-            if (y2 !== null) {
-              const slope = (y2 - yVal) / delta;
-              surfaceAngle = Math.atan(slope);
+          // Als de auto op of net boven/onder de lijn is, vang hem op
+          if (car.y >= yVal - 0.35 && car.y <= yVal + 0.5) {
+            if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
+              const delta = 0.001;
+              const y2 = evaluateMath(expr, car.x + delta);
+              if (y2 !== null) {
+                const slope = (y2 - yVal) / delta;
+                surfaceAngle = Math.atan(slope);
+              }
+              targetSurfaceY = yVal;
             }
-            targetSurfaceY = yVal;
           }
         }
       });
     }
 
-    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.4 && car.vy <= 0) {
+    if (targetSurfaceY !== null && car.y <= targetSurfaceY + 0.35 && car.vy <= 0) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -380,6 +382,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
+      // Extra vangnet om phasing tegen te gaan tijdens vallen
       if (targetSurfaceY !== null && car.y <= targetSurfaceY && car.vy <= 0) {
         car.y = targetSurfaceY;
         car.vy = 0;
@@ -566,7 +569,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.16', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.17', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
