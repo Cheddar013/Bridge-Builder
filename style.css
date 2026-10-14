@@ -223,7 +223,7 @@ body, html {
   flex: 1;
   height: 100%;
   position: relative;
-  background-color: #ffffff; /* Wit gemaakt zodat canvas perfect dekt */
+  background-color: #ffffff;
 }
 
 #graphCanvas {

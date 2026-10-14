@@ -1,59 +1,3 @@
-// --- AUDIO SYSTEM ---
-class SoundManager {
-  constructor() {
-    this.ctx = null;
-  }
-  init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-  }
-  playEngine(speedRatio) {
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(40 + speedRatio * 80, this.ctx.currentTime);
-    gain.gain.setValueAtTime(0.02, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.1);
-  }
-  playSuccess() {
-    this.init();
-    const notes = [261.63, 329.63, 392.00, 523.25];
-    notes.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.1);
-      gain.gain.setValueAtTime(0.1, this.ctx.currentTime + idx * 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.1 + 0.3);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(this.ctx.currentTime + idx * 0.1);
-      osc.stop(this.ctx.currentTime + idx * 0.1 + 0.3);
-    });
-  }
-  playCrash() {
-    this.init();
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(100, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.3);
-  }
-}
-
-const sounds = new SoundManager();
-
 // --- MATH EXPRESSION PARSER ---
 function evaluateMath(exprStr, xVal) {
   try {
@@ -129,7 +73,7 @@ const LEVELS = [
 let currentLevelIdx = 0;
 let functionsList = [];
 let isDriving = false;
-let car = { x: -6, y: -2, vx: 0, vy: 0, rotation: 0, grounded: false, crashed: false, won: false };
+let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false };
 
 // Canvas Geometry
 const canvas = document.getElementById('graphCanvas');
@@ -247,7 +191,6 @@ function addFunctionRow(initialVal = '') {
 }
 
 function toggleDrive() {
-  sounds.init();
   if (isDriving) {
     resetCarState();
   } else {
@@ -265,7 +208,7 @@ function resetCarState() {
   car = {
     x: lvl.start.x,
     y: lvl.start.y,
-    vx: 0,
+    vx: 1.5,
     vy: 0,
     rotation: 0,
     grounded: true,
@@ -279,15 +222,16 @@ function resetCarState() {
   document.getElementById('startIcon').className = 'fa-solid fa-play';
 }
 
-// --- PHYSICS ENGINE (60 TICKS/SEC) ---
+// --- PHYSICS ENGINE (60 TICKS/SEC - ANTI-PHASING & CONSTANT MOTION) ---
 function physicsTick() {
   if (!isDriving || car.crashed || car.won) return;
 
   const lvl = LEVELS[currentLevelIdx];
   const dt = 1 / 60;
-  const gravity = -18;
+  const gravity = -16;
   const enginePower = 3.5;
 
+  // Stap 1: Bepaal de hoogste ondergrond (start platform, finish platform, of formules)
   let highestY = -Infinity;
   let surfaceAngle = 0;
 
@@ -317,25 +261,26 @@ function physicsTick() {
     }
   });
 
-  const onGround = (car.y <= highestY + 0.1) && (car.y >= highestY - 0.4) && (car.vy <= 0);
-
-  if (onGround) {
+  // Stap 2: Anti-Phasing / Collision Guard (Voorkom dat de auto door lijnen heen valt of zakt)
+  if (car.y <= highestY + 0.15) {
+    // Contact met de lijn of het platform: Altijd gefixeerd op de ondergrond
     car.y = highestY;
     car.vy = 0;
     car.grounded = true;
 
-    if (car.vx < 0.8) {
-      car.vx = 0.8; 
+    // Altijd blijven bewegen: zorg dat snelheid nooit op 0 komt als er geen fysieke blokkade is
+    if (car.vx < 1.2) {
+      car.vx = 1.2;
     }
 
     const angleDeg = surfaceAngle * (180 / Math.PI);
 
-    if (angleDeg > 55) {
-      car.vx = Math.max(0.5, car.vx * 0.92);
+    if (angleDeg > 60) {
+      // Te steil om soepel omhoog te rijden, maar blijft duwen
+      car.vx = Math.max(0.6, car.vx * 0.95);
     } else {
       const slopeFactor = Math.cos(surfaceAngle);
-      car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 5.0);
-      sounds.playEngine(car.vx / 5.0);
+      car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 4.5);
     }
 
     car.rotation = surfaceAngle;
@@ -343,22 +288,30 @@ function physicsTick() {
     car.y += car.vx * Math.sin(surfaceAngle) * dt;
 
   } else {
+    // In de lucht: Valkracht met zwaartekracht
     car.grounded = false;
     car.vy += gravity * dt;
     car.x += car.vx * dt;
     car.y += car.vy * dt;
     car.rotation = Math.atan2(car.vy, car.vx || 0.1);
+
+    // Vangnet: Als de auto in de lucht door een lijn kruist, direct opvangen (anti-phasing)
+    if (highestY !== -Infinity && car.y <= highestY) {
+      car.y = highestY;
+      car.vy = 0;
+      car.grounded = true;
+    }
   }
 
+  // Win conditie
   const distToTarget = Math.hypot(car.x - lvl.target.x, car.y - lvl.target.y);
   if (distToTarget < 0.8) {
     car.won = true;
-    sounds.playSuccess();
   }
 
+  // Crash conditie (van het scherm vallen)
   if (car.y < -12) {
     car.crashed = true;
-    sounds.playCrash();
   }
 }
 
@@ -504,11 +457,11 @@ function drawCar() {
 
 function drawVersionText() {
   ctx.save();
-  ctx.font = '11px sans-serif';
-  ctx.fillStyle = '#b0b0b0';
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.4', canvas.width - 12, canvas.height - 12);
+  ctx.fillText('v0.1.0.6', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
