@@ -1,4 +1,14 @@
-// --- MATH EXPRESSION PARSER ---
+// --- MATH EXPRESSION PARSER (Ondersteunt nu ook x = getal) ---
+function parseVerticalLineX(exprStr) {
+  let clean = exprStr.replace(/\s+/g, '').toLowerCase();
+  // Check op x = getal (bijv. x=2, x=-3.5)
+  const match = clean.match(/^x=([+-]?\d*\.?\d+)$/);
+  if (match) {
+    return parseFloat(match[1]);
+  }
+  return null;
+}
+
 function evaluateMath(exprStr, xVal) {
   try {
     let clean = exprStr.replace(/\s+/g, '').toLowerCase();
@@ -158,7 +168,7 @@ function renderExpressionList() {
       </div>
       <div class="expr-content">
         <div class="math-input-wrapper">
-          <input type="text" class="math-input" value="${exprStr}" placeholder="typ een functie, bijv. y = x" data-index="${index}" />
+          <input type="text" class="math-input" value="${exprStr}" placeholder="typ een functie, bijv. y = x of x = 2" data-index="${index}" />
         </div>
         <button class="delete-row-btn" data-index="${index}"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -222,7 +232,7 @@ function resetCarState() {
   document.getElementById('startIcon').className = 'fa-solid fa-play';
 }
 
-// --- PHYSICS ENGINE (60 TICKS/SEC - ANTI-PHASING & CONSTANT MOTION) ---
+// --- PHYSICS ENGINE (60 TICKS/SEC) ---
 function physicsTick() {
   if (!isDriving || car.crashed || car.won) return;
 
@@ -231,7 +241,6 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  // Stap 1: Bepaal de hoogste ondergrond (start platform, finish platform, of formules)
   let highestY = -Infinity;
   let surfaceAngle = 0;
 
@@ -249,6 +258,20 @@ function physicsTick() {
 
   functionsList.forEach(expr => {
     if (!expr.trim()) return;
+
+    // Check of dit een verticale lijn is (x = getal)
+    const vertX = parseVerticalLineX(expr);
+    if (vertX !== null) {
+      // Als de auto tegen de verticale x-coordinaat aanrijdt, fungeert het als een muur of platform op hoogte
+      if (Math.abs(car.x - vertX) <= 0.25) {
+        if (car.y > highestY) {
+          highestY = car.y; // Vang op op huidige hoogte tegen de verticale muur
+          surfaceAngle = Math.PI / 2; // Verticale wand
+        }
+      }
+      return;
+    }
+
     const yVal = evaluateMath(expr, car.x);
     if (yVal !== null && yVal > highestY) {
       const delta = 0.001;
@@ -261,23 +284,20 @@ function physicsTick() {
     }
   });
 
-  // Stap 2: Anti-Phasing / Collision Guard (Voorkom dat de auto door lijnen heen valt of zakt)
+  // Anti-Phasing / Collision Guard
   if (car.y <= highestY + 0.15) {
-    // Contact met de lijn of het platform: Altijd gefixeerd op de ondergrond
     car.y = highestY;
     car.vy = 0;
     car.grounded = true;
 
-    // Altijd blijven bewegen: zorg dat snelheid nooit op 0 komt als er geen fysieke blokkade is
     if (car.vx < 1.2) {
       car.vx = 1.2;
     }
 
     const angleDeg = surfaceAngle * (180 / Math.PI);
 
-    if (angleDeg > 60) {
-      // Te steil om soepel omhoog te rijden, maar blijft duwen
-      car.vx = Math.max(0.6, car.vx * 0.95);
+    if (angleDeg > 60 || angleDeg === 90) {
+      car.vx = Math.max(0.4, car.vx * 0.90);
     } else {
       const slopeFactor = Math.cos(surfaceAngle);
       car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 4.5);
@@ -288,14 +308,12 @@ function physicsTick() {
     car.y += car.vx * Math.sin(surfaceAngle) * dt;
 
   } else {
-    // In de lucht: Valkracht met zwaartekracht
     car.grounded = false;
     car.vy += gravity * dt;
     car.x += car.vx * dt;
     car.y += car.vy * dt;
     car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-    // Vangnet: Als de auto in de lucht door een lijn kruist, direct opvangen (anti-phasing)
     if (highestY !== -Infinity && car.y <= highestY) {
       car.y = highestY;
       car.vy = 0;
@@ -303,13 +321,11 @@ function physicsTick() {
     }
   }
 
-  // Win conditie
   const distToTarget = Math.hypot(car.x - lvl.target.x, car.y - lvl.target.y);
   if (distToTarget < 0.8) {
     car.won = true;
   }
 
-  // Crash conditie (van het scherm vallen)
   if (car.y < -12) {
     car.crashed = true;
   }
@@ -408,8 +424,20 @@ function drawFunctions() {
 
     ctx.lineWidth = 3;
     ctx.strokeStyle = color;
-    ctx.beginPath();
 
+    // Check of het een verticale lijn is (x = getal)
+    const vertX = parseVerticalLineX(expr);
+    if (vertX !== null) {
+      const cx = toCanvasX(vertX);
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, canvas.height);
+      ctx.stroke();
+      return;
+    }
+
+    // Anders normale functie y = f(x)
+    ctx.beginPath();
     let started = false;
 
     for (let px = 0; px < canvas.width; px += 2) {
@@ -461,7 +489,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.6', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.7', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
