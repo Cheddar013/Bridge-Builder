@@ -1,7 +1,6 @@
-// --- MATH EXPRESSION PARSER (Ondersteunt nu ook x = getal) ---
+// --- MATH EXPRESSION PARSER ---
 function parseVerticalLineX(exprStr) {
   let clean = exprStr.replace(/\s+/g, '').toLowerCase();
-  // Check op x = getal (bijv. x=2, x=-3.5)
   const match = clean.match(/^x=([+-]?\d*\.?\d+)$/);
   if (match) {
     return parseFloat(match[1]);
@@ -232,7 +231,7 @@ function resetCarState() {
   document.getElementById('startIcon').className = 'fa-solid fa-play';
 }
 
-// --- PHYSICS ENGINE (60 TICKS/SEC) ---
+// --- PHYSICS ENGINE (STRICT ANTI-TUNNELING & ANTI-PHASING) ---
 function physicsTick() {
   if (!isDriving || car.crashed || car.won) return;
 
@@ -241,83 +240,92 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  let highestY = -Infinity;
-  let surfaceAngle = 0;
+  const substeps = 4;
+  const subDt = dt / substeps;
 
-  if (Math.abs(car.x - lvl.start.x) <= 1.2) {
-    highestY = lvl.start.y;
-    surfaceAngle = 0;
-  }
+  for (let step = 0; step < substeps; step++) {
+    let highestY = -Infinity;
+    let surfaceAngle = 0;
 
-  if (Math.abs(car.x - lvl.target.x) <= 1.2) {
-    if (lvl.target.y > highestY) {
-      highestY = lvl.target.y;
-      surfaceAngle = 0;
+    // 1. Check start platform
+    if (Math.abs(car.x - lvl.start.x) <= 1.2 && car.y >= lvl.start.y - 0.2 && car.y <= lvl.start.y + 0.6) {
+      if (lvl.start.y >= highestY) {
+        highestY = lvl.start.y;
+        surfaceAngle = 0;
+      }
     }
-  }
 
-  functionsList.forEach(expr => {
-    if (!expr.trim()) return;
+    // 2. Check target platform
+    if (Math.abs(car.x - lvl.target.x) <= 1.2 && car.y >= lvl.target.y - 0.2 && car.y <= lvl.target.y + 0.6) {
+      if (lvl.target.y >= highestY) {
+        highestY = lvl.target.y;
+        surfaceAngle = 0;
+      }
+    }
 
-    // Check of dit een verticale lijn is (x = getal)
-    const vertX = parseVerticalLineX(expr);
-    if (vertX !== null) {
-      // Als de auto tegen de verticale x-coordinaat aanrijdt, fungeert het als een muur of platform op hoogte
-      if (Math.abs(car.x - vertX) <= 0.25) {
-        if (car.y > highestY) {
-          highestY = car.y; // Vang op op huidige hoogte tegen de verticale muur
-          surfaceAngle = Math.PI / 2; // Verticale wand
+    // 3. Check alle functies
+    functionsList.forEach(expr => {
+      if (!expr.trim()) return;
+
+      const vertX = parseVerticalLineX(expr);
+      if (vertX !== null) {
+        if (Math.abs(car.x - vertX) <= 0.3) {
+          if (car.y >= highestY) {
+            highestY = car.y;
+            surfaceAngle = Math.PI / 2;
+          }
+        }
+        return;
+      }
+
+      const yVal = evaluateMath(expr, car.x);
+      if (yVal !== null) {
+        if (yVal >= highestY) {
+          const delta = 0.001;
+          const y2 = evaluateMath(expr, car.x + delta);
+          if (y2 !== null) {
+            const slope = (y2 - yVal) / delta;
+            surfaceAngle = Math.atan(slope);
+          }
+          highestY = yVal;
         }
       }
-      return;
-    }
+    });
 
-    const yVal = evaluateMath(expr, car.x);
-    if (yVal !== null && yVal > highestY) {
-      const delta = 0.001;
-      const y2 = evaluateMath(expr, car.x + delta);
-      if (y2 !== null) {
-        const slope = (y2 - yVal) / delta;
-        surfaceAngle = Math.atan(slope);
-      }
-      highestY = yVal;
-    }
-  });
-
-  // Anti-Phasing / Collision Guard
-  if (car.y <= highestY + 0.15) {
-    car.y = highestY;
-    car.vy = 0;
-    car.grounded = true;
-
-    if (car.vx < 1.2) {
-      car.vx = 1.2;
-    }
-
-    const angleDeg = surfaceAngle * (180 / Math.PI);
-
-    if (angleDeg > 60 || angleDeg === 90) {
-      car.vx = Math.max(0.4, car.vx * 0.90);
-    } else {
-      const slopeFactor = Math.cos(surfaceAngle);
-      car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 4.5);
-    }
-
-    car.rotation = surfaceAngle;
-    car.x += car.vx * Math.cos(surfaceAngle) * dt;
-    car.y += car.vx * Math.sin(surfaceAngle) * dt;
-
-  } else {
-    car.grounded = false;
-    car.vy += gravity * dt;
-    car.x += car.vx * dt;
-    car.y += car.vy * dt;
-    car.rotation = Math.atan2(car.vy, car.vx || 0.1);
-
-    if (highestY !== -Infinity && car.y <= highestY) {
+    if (car.y <= highestY + 0.12 && car.vy <= 0) {
       car.y = highestY;
       car.vy = 0;
       car.grounded = true;
+
+      if (car.vx < 1.2) {
+        car.vx = 1.2;
+      }
+
+      const angleDeg = surfaceAngle * (180 / Math.PI);
+
+      if (angleDeg > 60 || angleDeg === 90) {
+        car.vx = Math.max(0.4, car.vx * 0.90);
+      } else {
+        const slopeFactor = Math.cos(surfaceAngle);
+        car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
+      }
+
+      car.rotation = surfaceAngle;
+      car.x += car.vx * Math.cos(surfaceAngle) * subDt;
+      car.y += car.vx * Math.sin(surfaceAngle) * subDt;
+
+    } else {
+      car.grounded = false;
+      car.vy += gravity * subDt;
+      car.x += car.vx * subDt;
+      car.y += car.vy * subDt;
+      car.rotation = Math.atan2(car.vy, car.vx || 0.1);
+
+      if (highestY !== -Infinity && car.y <= highestY) {
+        car.y = highestY;
+        car.vy = 0;
+        car.grounded = true;
+      }
     }
   }
 
@@ -425,7 +433,6 @@ function drawFunctions() {
     ctx.lineWidth = 3;
     ctx.strokeStyle = color;
 
-    // Check of het een verticale lijn is (x = getal)
     const vertX = parseVerticalLineX(expr);
     if (vertX !== null) {
       const cx = toCanvasX(vertX);
@@ -436,7 +443,6 @@ function drawFunctions() {
       return;
     }
 
-    // Anders normale functie y = f(x)
     ctx.beginPath();
     let started = false;
 
@@ -489,7 +495,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.7', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.9', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
