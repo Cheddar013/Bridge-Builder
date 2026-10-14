@@ -208,7 +208,7 @@ function toggleDrive() {
     const startBtn = document.getElementById('startDriveBtn');
     startBtn.classList.add('reset-state');
     document.getElementById('startText').innerText = 'Reset';
-    document.getElementById('startIcon', 'fa-solid fa-rotate-left');
+    document.getElementById('startIcon').className = 'fa-solid fa-rotate-left';
   }
 }
 
@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (LOOKAHEAD COLLISION & ANTI-PHASING) ---
+// --- PHYSICS ENGINE ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -273,11 +273,11 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  const substeps = 10;
+  const substeps = 8;
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Check verticale muren (x = getal)
+    // 1. Stricte botsing met verticale muren (x = getal)
     let hitVerticalWall = false;
     let wallX = 0;
     functionsList.forEach(expr => {
@@ -308,53 +308,22 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Lookahead / Voorspellende frontale botsingscheck voor schuine/dalende lijnen voor de auto
-    let frontCollision = false;
-    let bounceY = 0;
-    functionsList.forEach(expr => {
-      if (!expr.trim()) return;
-      const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) return;
-
-      // Kijk een stukje voor de auto (voorbumper)
-      const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.4;
-      const lineYAtFront = evaluateMath(expr, lookAheadX);
-
-      if (lineYAtFront !== null) {
-        // Als de neus van de auto tegen de lijn aan botst of erdoor probeert te dringen
-        if (Math.abs(car.y - lineYAtFront) <= 0.45 && car.vx > 0) {
-          frontCollision = true;
-          bounceY = lineYAtFront;
-        }
-      }
-    });
-
-    if (frontCollision) {
-      // Frontale stuit / weerkaatsing
-      car.vx = -car.vx * 0.65;
-      car.vy = Math.max(Math.abs(car.vx) * 0.75, 3.5);
-      car.grounded = false;
-      car.x -= Math.sign(car.vx || 1) * 0.15; // Duw terug weg van de lijn
-      car.y = bounceY + 0.1;
-      continue;
-    }
-
     let targetSurfaceY = null;
     let surfaceAngle = 0;
 
-    // 3. Check start platform
+    // 2. Check start platform
     if (Math.abs(car.x - lvl.start.x) <= 1.2 && Math.abs(car.y - lvl.start.y) <= 0.8) {
       targetSurfaceY = lvl.start.y;
       surfaceAngle = 0;
     }
 
-    // 4. Check target platform
+    // 3. Check target platform
     if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.8) {
       targetSurfaceY = lvl.target.y;
       surfaceAngle = 0;
     }
 
-    // 5. Normale grond- en functiedetectie
+    // 4. Zoek actieve functielijn voor klimmen en dalen
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -396,6 +365,7 @@ function physicsTick() {
         const slopeFactor = Math.cos(surfaceAngle);
         car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
       } else if (angleDeg < 0) {
+        // Soepel dalen / afdalen
         car.vx = Math.min(car.vx + 2.5 * enginePower * subDt, 6.0);
       } else {
         car.vx = Math.min(car.vx + 2.0 * enginePower * subDt, 5.5);
@@ -598,7 +568,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.21', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.22', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
