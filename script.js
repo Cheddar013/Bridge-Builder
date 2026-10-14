@@ -83,7 +83,7 @@ let currentLevelIdx = 0;
 let functionsList = [];
 let isDriving = false;
 let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false };
-let particles = []; // Voor confetti-effect
+let particles = [];
 
 // Canvas Geometry
 const canvas = document.getElementById('graphCanvas');
@@ -254,15 +254,14 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (STRICT ELASTIC BOUNCE & VERTICAL WALL COLLISION) ---
+// --- PHYSICS ENGINE (DIRECT IMPACT & ELASTIC BOUNCE) ---
 function physicsTick() {
   if (car.crashed) return;
 
-  // Update confetti deeltjes altijd als die er zijn
   particles.forEach(p => {
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.2; // zwaartekracht op confetti
+    p.vy += 0.2;
     p.alpha -= p.decay;
   });
   particles = particles.filter(p => p.alpha > 0);
@@ -278,17 +277,18 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Controleer op elastische botsing met verticale muren (x = getal)
+    // 1. Botsing met verticale muren (x = getal): botst direct tegen de muur aan en kaatst terug op basis van snelheid
     let hitVerticalWall = false;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        if (car.x + 0.45 >= vertX && car.x - 0.45 <= vertX) {
+        // Als de neus of het midden van de auto de muur raakt
+        if (Math.abs(car.x - vertX) <= 0.4) {
           hitVerticalWall = true;
-          car.x = vertX - (car.vx > 0 ? 0.46 : -0.46);
-          // Weerkaatsing gebaseerd op snelheid (elastische botsing met energiebehoud factor 0.5)
-          car.vx = -car.vx * 0.5;
+          car.x = vertX + (car.vx > 0 ? -0.41 : 0.41);
+          // Echte elastische terugkaatsing gebaseerd op de snelheid waarmee je botst
+          car.vx = -car.vx * 0.65;
         }
       }
     });
@@ -549,7 +549,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.11', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.12', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
