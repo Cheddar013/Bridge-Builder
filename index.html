@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bridge Builder - Desmos Edition</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <!-- LEFT SIDEBAR (Desmos Classroom Style) -->
+  <aside class="sidebar">
+    <!-- Top Bar -->
+    <div class="sidebar-top">
+      <button class="icon-btn" id="addExprBtn" title="Voeg functie toe">
+        <i class="fa-solid fa-plus"></i>
+      </button>
+      <div class="top-center-actions">
+        <button class="icon-btn disabled" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="icon-btn disabled" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+      <div class="top-right-actions">
+        <button class="icon-btn" id="resetBtn" title="Reset Level"><i class="fa-solid fa-gear"></i></button>
+      </div>
+    </div>
+
+    <!-- Expression List -->
+    <div class="expression-list" id="expressionList">
+      <!-- Item 1: Prompt note -->
+      <div class="expr-row note-row">
+        <div class="expr-gutter">
+          <span class="expr-num">1</span>
+          <span class="quote-icon">“</span>
+        </div>
+        <div class="expr-content">
+          <div class="note-text" id="promptText">Breng het auto tot de rode vlaggetje</div>
+        </div>
+      </div>
+
+      <!-- Function Rows will be rendered dynamically -->
+    </div>
+
+    <!-- Bottom Controls in Sidebar -->
+    <div class="sidebar-bottom">
+      <button class="add-row-btn" id="addExprRowBtn">
+        <i class="fa-solid fa-plus"></i> Expressie toevoegen
+      </button>
+
+      <div class="level-nav">
+        <button class="level-btn" id="prevLevelBtn"><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="level-indicator" id="levelIndicator">Level 1 / 5</span>
+        <button class="level-btn" id="nextLevelBtn"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT CANVAS (Desmos Graphing View) -->
+  <main class="canvas-container">
+    <canvas id="graphCanvas"></canvas>
+
+    <!-- Overlay Floating Start Button -->
+    <div class="canvas-controls">
+      <button class="start-btn" id="startDriveBtn">
+        <i class="fa-solid fa-play" id="startIcon"></i>
+        <span id="startText">Start</span>
+      </button>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
