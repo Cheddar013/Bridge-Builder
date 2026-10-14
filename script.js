@@ -187,6 +187,7 @@ function changeLevel(delta) {
   }
 }
 
+// Controleert of er een lege expressie onderaan staat. Zo niet, voeg er direct een toe.
 function ensureTrailingEmptyExpression() {
   const hasEmptyAtEnd = functionsList.length > 0 && functionsList[functionsList.length - 1].trim() === '';
   if (!hasEmptyAtEnd) {
@@ -233,6 +234,8 @@ function renderExpressionList() {
     input.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.index);
       functionsList[idx] = e.target.value;
+      
+      // Altijd een lege expressie onderaan neerzetten als er geen lege is
       ensureTrailingEmptyExpression();
     });
   });
@@ -241,6 +244,7 @@ function renderExpressionList() {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(btn.closest('.delete-row-btn').dataset.index);
       functionsList.splice(idx, 1);
+      
       ensureTrailingEmptyExpression();
       renderExpressionList();
     });
@@ -294,17 +298,14 @@ function physicsTick() {
   const gravity = -18;
   const enginePower = 3.2;
 
-  // Evaluate ground height beneath the car
   let highestY = -Infinity;
   let surfaceAngle = 0;
 
-  // 1. Check start platform
   if (Math.abs(car.x - lvl.start.x) <= 1.2) {
     highestY = lvl.start.y;
     surfaceAngle = 0;
   }
 
-  // 2. Check target platform
   if (Math.abs(car.x - lvl.target.x) <= 1.2) {
     if (lvl.target.y > highestY) {
       highestY = lvl.target.y;
@@ -312,12 +313,10 @@ function physicsTick() {
     }
   }
 
-  // 3. Check all mathematical functions
   functionsList.forEach(expr => {
     if (!expr.trim()) return;
     const yVal = evaluateMath(expr, car.x);
     if (yVal !== null && yVal > highestY) {
-      // Calculate tangent/slope angle via derivative approximation
       const delta = 0.001;
       const y2 = evaluateMath(expr, car.x + delta);
       if (y2 !== null) {
@@ -328,7 +327,6 @@ function physicsTick() {
     }
   });
 
-  // Ground collision check
   const onGround = (car.y <= highestY + 0.08) && (car.y >= highestY - 0.4) && (car.vy <= 0);
 
   if (onGround) {
@@ -338,13 +336,11 @@ function physicsTick() {
 
     const angleDeg = surfaceAngle * (180 / Math.PI);
 
-    // Steepness Friction Check (> 45 degrees causes slowdown/stop)
     if (angleDeg > 45) {
-      car.vx *= 0.85; // Heavy slope friction
+      car.vx *= 0.85;
       if (car.vx < 0.2) car.vx = 0;
       sounds.playCrash();
     } else {
-      // Accelerate forward
       const slopeFactor = Math.cos(surfaceAngle);
       car.vx = Math.min(car.vx + enginePower * dt * slopeFactor, 4.5);
       sounds.playEngine(car.vx / 4.5);
@@ -355,7 +351,6 @@ function physicsTick() {
     car.y += car.vx * Math.sin(surfaceAngle) * dt;
 
   } else {
-    // Air Physics / Gravity Fall
     car.grounded = false;
     car.vy += gravity * dt;
     car.x += car.vx * dt;
@@ -363,14 +358,12 @@ function physicsTick() {
     car.rotation = Math.atan2(car.vy, car.vx || 0.1);
   }
 
-  // Win condition: Reached red flag
   const distToTarget = Math.hypot(car.x - lvl.target.x, car.y - lvl.target.y);
   if (distToTarget < 0.8) {
     car.won = true;
     sounds.playSuccess();
   }
 
-  // Fall condition: Dropped off canvas
   if (car.y < -12) {
     car.crashed = true;
     sounds.playCrash();
@@ -399,7 +392,6 @@ function drawGrid() {
   ctx.fillStyle = '#888888';
   ctx.font = '12px sans-serif';
 
-  // Vertical lines
   for (let x = -30; x <= 30; x++) {
     const cx = toCanvasX(x);
     if (cx >= 0 && cx <= canvas.width) {
@@ -411,7 +403,6 @@ function drawGrid() {
     }
   }
 
-  // Horizontal lines
   for (let y = -20; y <= 20; y++) {
     const cy = toCanvasY(y);
     if (cy >= 0 && cy <= canvas.height) {
@@ -423,34 +414,24 @@ function drawGrid() {
     }
   }
 
-  // Axes
   ctx.lineWidth = 2;
   ctx.strokeStyle = '#333333';
   ctx.beginPath();
-  ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); // X Axis
-  ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); // Y Axis
+  ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY);
+  ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height);
   ctx.stroke();
 }
 
 function drawPlatforms() {
   const lvl = LEVELS[currentLevelIdx];
-
-  // Start Platform
   ctx.fillStyle = '#666';
   ctx.fillRect(toCanvasX(lvl.start.x - 1), toCanvasY(lvl.start.y), scale * 2, 8);
-
-  // Target Platform
-  ctx.fillStyle = '#666';
   ctx.fillRect(toCanvasX(lvl.target.x - 1), toCanvasY(lvl.target.y), scale * 2, 8);
 }
 
 function drawFlags() {
   const lvl = LEVELS[currentLevelIdx];
-
-  // Start Flag (Yellow)
   drawFlag(lvl.start.x, lvl.start.y, '#f1c40f');
-
-  // Finish Flag (Red)
   drawFlag(lvl.target.x, lvl.target.y, '#e74c3c');
 }
 
@@ -458,7 +439,6 @@ function drawFlag(x, y, color) {
   const cx = toCanvasX(x);
   const cy = toCanvasY(y);
 
-  // Pole
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -466,7 +446,6 @@ function drawFlag(x, y, color) {
   ctx.lineTo(cx, cy - 35);
   ctx.stroke();
 
-  // Banner
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(cx, cy - 35);
@@ -515,15 +494,12 @@ function drawCar() {
   ctx.translate(cx, cy);
   ctx.rotate(-car.rotation);
 
-  // Car Body
   ctx.fillStyle = '#2d70b3';
   ctx.fillRect(-18, -12, 36, 10);
 
-  // Roof
   ctx.fillStyle = '#1e5288';
   ctx.fillRect(-10, -18, 20, 7);
 
-  // Wheels
   ctx.fillStyle = '#222';
   ctx.beginPath();
   ctx.arc(-10, -2, 5, 0, Math.PI * 2);
@@ -533,5 +509,4 @@ function drawCar() {
   ctx.restore();
 }
 
-// Start App on Load
 window.onload = initApp;
