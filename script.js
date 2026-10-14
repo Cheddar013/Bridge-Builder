@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (BIDIRECTIONAL ANTI-PHASING) ---
+// --- PHYSICS ENGINE (ROBUST BOUNCE & SLOPED COLLISION) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -323,7 +323,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 4. Check functies voor zowel stijgende als dalende lijnen (naar de min / plus)
+    // 4. Check functies (zowel stijgend als dalend) met weerkaatsing bij frontale impact op dalende/steile muren
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -332,15 +332,25 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          // Vang de auto op zolang hij dicht bij de lijn is (zowel van boven als van onderen)
-          if (Math.abs(car.y - yVal) <= 0.4) {
+          const delta = 0.001;
+          const y2 = evaluateMath(expr, car.x + delta);
+          let slope = 0;
+          if (y2 !== null) {
+            slope = (y2 - yVal) / delta;
+            surfaceAngle = Math.atan(slope);
+          }
+
+          const angleDeg = surfaceAngle * (180 / Math.PI);
+
+          // Als de lijn erg steil naar beneden loopt (of een harde barrière vormt voor de auto)
+          if (angleDeg < -45 && Math.abs(car.y - yVal) <= 0.5 && car.vx > 0) {
+            // Elastische weerkaatsing / afbonken op een dalende lijn
+            car.vx = -car.vx * 0.6;
+            car.vy = Math.max(Math.abs(car.vx) * 0.7, 3.0);
+            car.grounded = false;
+            car.x -= 0.1; // Duw iets terug
+          } else if (Math.abs(car.y - yVal) <= 0.4) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
-              const delta = 0.001;
-              const y2 = evaluateMath(expr, car.x + delta);
-              if (y2 !== null) {
-                const slope = (y2 - yVal) / delta;
-                surfaceAngle = Math.atan(slope);
-              }
               targetSurfaceY = yVal;
             }
           }
@@ -367,6 +377,9 @@ function physicsTick() {
       } else if (angleDeg > 0 && angleDeg <= 45) {
         const slopeFactor = Math.cos(surfaceAngle);
         car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
+      } else if (angleDeg < 0) {
+        // Bergafwaarts / dalend rijden
+        car.vx = Math.min(car.vx + 2.5 * enginePower * subDt, 6.0);
       } else {
         car.vx = Math.min(car.vx + 2.0 * enginePower * subDt, 5.5);
       }
@@ -568,7 +581,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.18', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.19', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
