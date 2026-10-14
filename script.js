@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (ANTI-PHASING / ANTI-TUNNELING) ---
+// --- PHYSICS ENGINE (BIDIRECTIONAL ANTI-PHASING) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -273,7 +273,7 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  const substeps = 8; // Meer substeps om phasen absoluut te voorkomen
+  const substeps = 8;
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
@@ -323,7 +323,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 4. Check functies nabij de auto om doorheen vallen (phasing) te blokkeren
+    // 4. Check functies voor zowel stijgende als dalende lijnen (naar de min / plus)
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -332,8 +332,8 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          // Als de auto op of net boven/onder de lijn is, vang hem op
-          if (car.y >= yVal - 0.35 && car.y <= yVal + 0.5) {
+          // Vang de auto op zolang hij dicht bij de lijn is (zowel van boven als van onderen)
+          if (Math.abs(car.y - yVal) <= 0.4) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
               const y2 = evaluateMath(expr, car.x + delta);
@@ -348,7 +348,7 @@ function physicsTick() {
       });
     }
 
-    if (targetSurfaceY !== null && car.y <= targetSurfaceY + 0.35 && car.vy <= 0) {
+    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.4) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -382,8 +382,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      // Extra vangnet om phasing tegen te gaan tijdens vallen
-      if (targetSurfaceY !== null && car.y <= targetSurfaceY && car.vy <= 0) {
+      if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.4) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -569,7 +568,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.17', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.18', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
