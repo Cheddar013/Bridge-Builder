@@ -176,7 +176,7 @@ function loadLevel(idx) {
   document.getElementById('levelIndicator').innerText = `Level ${idx + 1} / ${LEVELS.length}`;
   
   functionsList = [...lvl.defaultFunctions];
-  renderExpressionList();
+  ensureTrailingEmptyExpression();
   resetCarState();
 }
 
@@ -184,6 +184,14 @@ function changeLevel(delta) {
   let newIdx = currentLevelIdx + delta;
   if (newIdx >= 0 && newIdx < LEVELS.length) {
     loadLevel(newIdx);
+  }
+}
+
+function ensureTrailingEmptyExpression() {
+  const hasEmptyAtEnd = functionsList.length > 0 && functionsList[functionsList.length - 1].trim() === '';
+  if (!hasEmptyAtEnd) {
+    functionsList.push('');
+    renderExpressionList();
   }
 }
 
@@ -225,6 +233,7 @@ function renderExpressionList() {
     input.addEventListener('input', (e) => {
       const idx = parseInt(e.target.dataset.index);
       functionsList[idx] = e.target.value;
+      ensureTrailingEmptyExpression();
     });
   });
 
@@ -232,6 +241,7 @@ function renderExpressionList() {
     btn.addEventListener('click', (e) => {
       const idx = parseInt(btn.closest('.delete-row-btn').dataset.index);
       functionsList.splice(idx, 1);
+      ensureTrailingEmptyExpression();
       renderExpressionList();
     });
   });
@@ -476,7 +486,6 @@ function drawFunctions() {
     ctx.beginPath();
 
     let started = false;
-    const step = 2 / scale; // Pixel precision
 
     for (let px = 0; px < canvas.width; px += 2) {
       const xVal = (px - originX) / scale;
