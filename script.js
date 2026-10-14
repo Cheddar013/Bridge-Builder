@@ -231,7 +231,7 @@ function resetCarState() {
   document.getElementById('startIcon').className = 'fa-solid fa-play';
 }
 
-// --- PHYSICS ENGINE (STRICT ANTI-TUNNELING & ANTI-PHASING) ---
+// --- PHYSICS ENGINE (STRICT ANTI-TUNNELING & VERTICAL WALL COLLISION) ---
 function physicsTick() {
   if (!isDriving || car.crashed || car.won) return;
 
@@ -244,10 +244,29 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
+    // 1. Controleer op botsing met verticale muren (x = getal)
+    let hitVerticalWall = false;
+    functionsList.forEach(expr => {
+      if (!expr.trim()) return;
+      const vertX = parseVerticalLineX(expr);
+      if (vertX !== null) {
+        // Auto breedte radius is ongeveer 0.5 (van x - 0.45 tot x + 0.45)
+        if (car.x + 0.45 >= vertX && car.x - 0.45 <= vertX) {
+          hitVerticalWall = true;
+          car.x = vertX - 0.45; // Duw de auto precies tegen de muur aan
+          car.vx = 0; // Stop de voorwaartse snelheid
+        }
+      }
+    });
+
+    if (hitVerticalWall) {
+      continue; // Sla de rest van deze substep over om door de muur heen glijden te voorkomen
+    }
+
     let highestY = -Infinity;
     let surfaceAngle = 0;
 
-    // 1. Check start platform
+    // 2. Check start platform
     if (Math.abs(car.x - lvl.start.x) <= 1.2 && car.y >= lvl.start.y - 0.2 && car.y <= lvl.start.y + 0.6) {
       if (lvl.start.y >= highestY) {
         highestY = lvl.start.y;
@@ -255,7 +274,7 @@ function physicsTick() {
       }
     }
 
-    // 2. Check target platform
+    // 3. Check target platform
     if (Math.abs(car.x - lvl.target.x) <= 1.2 && car.y >= lvl.target.y - 0.2 && car.y <= lvl.target.y + 0.6) {
       if (lvl.target.y >= highestY) {
         highestY = lvl.target.y;
@@ -263,20 +282,11 @@ function physicsTick() {
       }
     }
 
-    // 3. Check alle functies
+    // 4. Check alle reguliere y = f(x) functies
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
-
       const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) {
-        if (Math.abs(car.x - vertX) <= 0.3) {
-          if (car.y >= highestY) {
-            highestY = car.y;
-            surfaceAngle = Math.PI / 2;
-          }
-        }
-        return;
-      }
+      if (vertX !== null) return; // Al behandeld
 
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
@@ -495,7 +505,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.9', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.10', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
