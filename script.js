@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (DIRECT IMPACT & ELASTIC BOUNCE) ---
+// --- PHYSICS ENGINE (TRUE ELASTIC BOUNCE AGAINST VERTICAL WALLS) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -277,23 +277,33 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Botsing met verticale muren (x = getal): botst direct tegen de muur aan en kaatst terug op basis van snelheid
+    // 1. Check op botsing met verticale lijnen (x = getal) en voer echte terugstuit uit
     let hitVerticalWall = false;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        // Als de neus of het midden van de auto de muur raakt
-        if (Math.abs(car.x - vertX) <= 0.4) {
+        if (Math.abs(car.x - vertX) <= 0.4 && car.vx !== 0) {
           hitVerticalWall = true;
-          car.x = vertX + (car.vx > 0 ? -0.41 : 0.41);
-          // Echte elastische terugkaatsing gebaseerd op de snelheid waarmee je botst
-          car.vx = -car.vx * 0.65;
+          // Omkeer snelheid met restitutiecoefficient van 0.7 (stevige stuit / bonk)
+          car.vx = -car.vx * 0.7;
+          // Geef de auto direct een opwaartse impuls (vy) zodat hij er spectaculair van af kaatst
+          car.vy = Math.max(Math.abs(car.vx) * 0.8, 3.5);
+          car.grounded = false;
+          // Duw de auto direct los van de lijn in de nieuwe bewegingsrichting
+          car.x = vertX + (car.vx > 0 ? 0.05 : -0.05);
         }
       }
     });
 
-    if (hitVerticalWall) continue;
+    if (hitVerticalWall) {
+      // Laat de auto direct doorrekenen in de lucht na de stuit
+      car.vy += gravity * subDt;
+      car.x += car.vx * subDt;
+      car.y += car.vy * subDt;
+      car.rotation = Math.atan2(car.vy, car.vx);
+      continue;
+    }
 
     let highestY = -Infinity;
     let surfaceAngle = 0;
@@ -549,7 +559,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.12', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.13', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
