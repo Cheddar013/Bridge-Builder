@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (SLOPE-BASED SPEED & STEEPNESS LOGIC) ---
+// --- PHYSICS ENGINE ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -277,28 +277,35 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Check verticale muren (x = getal) met elastische stuit
+    // 1. Stricte botsing met verticale muren (x = getal) om klimmen te voorkomen
     let hitVerticalWall = false;
+    let wallX = 0;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        if (Math.abs(car.x - vertX) <= 0.4 && car.vx !== 0) {
+        if (Math.abs(car.x - vertX) <= 0.45) {
           hitVerticalWall = true;
-          car.vx = -car.vx * 0.7;
-          car.vy = Math.max(Math.abs(car.vx) * 0.8, 3.5);
-          car.grounded = false;
-          car.x = vertX + (car.vx > 0 ? 0.05 : -0.05);
+          wallX = vertX;
         }
       }
     });
 
     if (hitVerticalWall) {
+      if (car.vx > 0) {
+        car.x = wallX - 0.46;
+        car.vx = -Math.abs(car.vx) * 0.7; // Stuiter terug naar links
+      } else {
+        car.x = wallX + 0.46;
+        car.vx = Math.abs(car.vx) * 0.7; // Stuiter terug naar rechts
+      }
+      car.vy = Math.max(Math.abs(car.vx) * 0.8, 3.5);
+      car.grounded = false;
       car.vy += gravity * subDt;
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx);
-      continue;
+      continue; // Sla verdere grond- en hellingscontroles over in deze substep!
     }
 
     let highestY = -Infinity;
@@ -347,25 +354,19 @@ function physicsTick() {
 
       const angleDeg = surfaceAngle * (180 / Math.PI);
 
-      // --- NIEUWE HELLING- EN SNELHEIDSFYSICA ---
       if (angleDeg > 45) {
-        // Stijler dan 45 graden: verliest snelheid afhankelijk van hoe steil
-        const excessSteepness = (angleDeg - 45) / 45; // 0 bij 45°, tot 1 bij 90°
+        const excessSteepness = (angleDeg - 45) / 45;
         car.vx -= (1.5 + excessSteepness * 5.0) * subDt;
         
-        // Als snelheid op is op te steile helling -> begint de andere kant op te versnellen (achteruit rollen)
         if (car.vx < 0) {
           car.vx -= 2.0 * subDt;
         }
       } else if (Math.abs(angleDeg) < 1) {
-        // 0 graden (plat): eindeloos versnellen, bouwt langzaam op
         car.vx = Math.min(car.vx + 0.5 * subDt, 6.0);
       } else if (angleDeg > 0 && angleDeg <= 45) {
-        // Onder of op 45 graden: versnelt met een set aantal
         const slopeFactor = Math.cos(surfaceAngle);
         car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
       } else {
-        // Bergafwaarts
         car.vx = Math.min(car.vx + 2.0 * enginePower * subDt, 5.5);
       }
 
@@ -566,7 +567,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.14', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.15', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
