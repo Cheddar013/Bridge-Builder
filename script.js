@@ -277,7 +277,7 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Stricte botsing met verticale muren (x = getal) om klimmen te voorkomen
+    // 1. Stricte botsing met verticale muren (x = getal)
     let hitVerticalWall = false;
     let wallX = 0;
     functionsList.forEach(expr => {
@@ -294,10 +294,10 @@ function physicsTick() {
     if (hitVerticalWall) {
       if (car.vx > 0) {
         car.x = wallX - 0.46;
-        car.vx = -Math.abs(car.vx) * 0.7; // Stuiter terug naar links
+        car.vx = -Math.abs(car.vx) * 0.7;
       } else {
         car.x = wallX + 0.46;
-        car.vx = Math.abs(car.vx) * 0.7; // Stuiter terug naar rechts
+        car.vx = Math.abs(car.vx) * 0.7;
       }
       car.vy = Math.max(Math.abs(car.vx) * 0.8, 3.5);
       car.grounded = false;
@@ -305,50 +305,49 @@ function physicsTick() {
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx);
-      continue; // Sla verdere grond- en hellingscontroles over in deze substep!
+      continue;
     }
 
-    let highestY = -Infinity;
+    let targetSurfaceY = null;
     let surfaceAngle = 0;
 
     // 2. Check start platform
-    if (Math.abs(car.x - lvl.start.x) <= 1.2 && car.y >= lvl.start.y - 0.2 && car.y <= lvl.start.y + 0.6) {
-      if (lvl.start.y >= highestY) {
-        highestY = lvl.start.y;
-        surfaceAngle = 0;
-      }
+    if (Math.abs(car.x - lvl.start.x) <= 1.2 && Math.abs(car.y - lvl.start.y) <= 0.6) {
+      targetSurfaceY = lvl.start.y;
+      surfaceAngle = 0;
     }
 
     // 3. Check target platform
-    if (Math.abs(car.x - lvl.target.x) <= 1.2 && car.y >= lvl.target.y - 0.2 && car.y <= lvl.target.y + 0.6) {
-      if (lvl.target.y >= highestY) {
-        highestY = lvl.target.y;
-        surfaceAngle = 0;
-      }
+    if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.6) {
+      targetSurfaceY = lvl.target.y;
+      surfaceAngle = 0;
     }
 
-    // 4. Check alle reguliere y = f(x) functies
-    functionsList.forEach(expr => {
-      if (!expr.trim()) return;
-      const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) return;
+    // 4. Check functies nabij de huidige verticale positie van de auto
+    if (targetSurfaceY === null) {
+      functionsList.forEach(expr => {
+        if (!expr.trim()) return;
+        const vertX = parseVerticalLineX(expr);
+        if (vertX !== null) return;
 
-      const yVal = evaluateMath(expr, car.x);
-      if (yVal !== null) {
-        if (yVal >= highestY) {
-          const delta = 0.001;
-          const y2 = evaluateMath(expr, car.x + delta);
-          if (y2 !== null) {
-            const slope = (y2 - yVal) / delta;
-            surfaceAngle = Math.atan(slope);
+        const yVal = evaluateMath(expr, car.x);
+        if (yVal !== null) {
+          // Zoek de functie die het dichtst bij de huidige autohoogte ligt (zodat we de huidige y-positie behouden)
+          if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
+            const delta = 0.001;
+            const y2 = evaluateMath(expr, car.x + delta);
+            if (y2 !== null) {
+              const slope = (y2 - yVal) / delta;
+              surfaceAngle = Math.atan(slope);
+            }
+            targetSurfaceY = yVal;
           }
-          highestY = yVal;
         }
-      }
-    });
+      });
+    }
 
-    if (car.y <= highestY + 0.12 && car.vy <= 0) {
-      car.y = highestY;
+    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.4 && car.vy <= 0) {
+      car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
 
@@ -381,8 +380,8 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (highestY !== -Infinity && car.y <= highestY) {
-        car.y = highestY;
+      if (targetSurfaceY !== null && car.y <= targetSurfaceY && car.vy <= 0) {
+        car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
       }
@@ -567,7 +566,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.15', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.16', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
