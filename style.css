@@ -1,0 +1,277 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #ffffff;
+  display: flex;
+}
+
+/* SIDEBAR STYLES */
+.sidebar {
+  width: 380px;
+  height: 100%;
+  background-color: #ededed;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+}
+
+.sidebar-top {
+  height: 48px;
+  background-color: #e0e0e0;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #444;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.icon-btn:hover:not(.disabled) {
+  background-color: rgba(0,0,0,0.08);
+}
+
+.icon-btn.disabled {
+  color: #aaa;
+  cursor: default;
+}
+
+.top-center-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Expression List */
+.expression-list {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #ededed;
+}
+
+.expr-row {
+  display: flex;
+  min-height: 52px;
+  border-bottom: 1px solid #dc0c0c00;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  position: relative;
+}
+
+.expr-gutter {
+  width: 48px;
+  background-color: #f7f7f7;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.expr-num {
+  font-size: 12px;
+  color: #888;
+  position: absolute;
+  top: 6px;
+  left: 6px;
+}
+
+/* Desmos Icon SVG Container */
+.desmos-icon-wrapper {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quote-icon {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  color: #aaa;
+  font-weight: bold;
+}
+
+.expr-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  position: relative;
+}
+
+.note-text {
+  font-size: 14px;
+  color: #222;
+  line-height: 1.4;
+}
+
+.math-input-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.math-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-family: "Times New Roman", Times, serif;
+  font-style: italic;
+  font-size: 18px;
+  color: #000;
+  background: transparent;
+}
+
+.delete-row-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #bbb;
+  font-size: 16px;
+  cursor: pointer;
+  display: none;
+}
+
+.expr-row:hover .delete-row-btn {
+  display: block;
+}
+
+.delete-row-btn:hover {
+  color: #333;
+}
+
+/* Bottom Bar */
+.sidebar-bottom {
+  background-color: #e0e0e0;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-row-btn {
+  background: #ffffff;
+  border: 1px solid #bbb;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-row-btn:hover {
+  background: #f5f5f5;
+}
+
+.level-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.level-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: #444;
+}
+
+.level-indicator {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* CANVAS AREA */
+.canvas-container {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  background-color: #fafafa;
+}
+
+#graphCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Canvas Overlay Controls */
+.canvas-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 10px;
+  z-index: 5;
+}
+
+.start-btn {
+  background-color: #2d70b3;
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.start-btn:hover {
+  background-color: #1e5288;
+}
+
+.start-btn:active {
+  transform: scale(0.98);
+}
+
+.start-btn.reset-state {
+  background-color: #d9534f;
+}
+
+.start-btn.reset-state:hover {
+  background-color: #c9302c;
+}
