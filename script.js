@@ -82,7 +82,7 @@ const LEVELS = [
 let currentLevelIdx = 0;
 let functionsList = [];
 let isDriving = false;
-let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false };
+let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false, blocked: false };
 let particles = [];
 
 // Canvas Geometry
@@ -223,7 +223,8 @@ function resetCarState() {
     rotation: 0,
     grounded: true,
     crashed: false,
-    won: false
+    won: false,
+    blocked: false
   };
   particles = [];
 
@@ -254,9 +255,9 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE COLLISION SNAP) ---
+// --- PHYSICS ENGINE (STRICT FRONT-COLLISION STOP & BLOCK) ---
 function physicsTick() {
-  if (car.crashed) return;
+  if (car.crashed || car.blocked) return;
 
   particles.forEach(p => {
     p.x += p.vx;
@@ -339,7 +340,8 @@ function physicsTick() {
       car.vx = 0;
       car.vy = 0;
       car.grounded = true;
-      continue;
+      car.blocked = true;
+      break;
     }
 
     let targetSurfaceY = null;
@@ -603,7 +605,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.32', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.33', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
