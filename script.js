@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (AIRBORNE FRONT LINE CHECK VS DRIVING SURFACE) ---
+// --- PHYSICS ENGINE (SMOOTH LANDING & DRIVING) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -330,7 +330,7 @@ function physicsTick() {
     }
 
     if (hitFrontSlopedOrHorizontal) {
-      car.vx = 0;
+      car.vx = Math.max(car.vx * 0.5, 0.5);
       car.vy = 0;
       car.grounded = true;
       car.y = collisionY;
@@ -352,7 +352,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Rijd verder over de bovenkant van de lijn als we erop zijn
+    // 5. Zoek de dichtstbijzijnde lijn onder of bij de auto om op te landen/rijden
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -361,7 +361,8 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          if (car.y >= yVal - 0.4 && car.y <= yVal + 0.8 && car.vy <= 2.0) {
+          // Ruurdere marge zodat vallende auto's direct worden opgevangen
+          if (car.y >= yVal - 0.6 && car.y <= yVal + 0.8) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
               const y2 = evaluateMath(expr, car.x + delta);
@@ -376,7 +377,7 @@ function physicsTick() {
       });
     }
 
-    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.4 && car.y <= targetSurfaceY + 0.8) {
+    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -412,7 +413,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.4 && car.y <= targetSurfaceY + 0.8) {
+      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -598,7 +599,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.29', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.30', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
