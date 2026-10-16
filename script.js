@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE ---
+// --- PHYSICS ENGINE (DUAL-HITBOX: TOP = RIDE, BOTTOM = BOUNCE) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -273,11 +273,11 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  const substeps = 8;
+  const substeps = 10;
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Stricte botsing met verticale muren (x = getal)
+    // 1. Vertical walls check (x = getal)
     let hitVerticalWall = false;
     let wallX = 0;
     functionsList.forEach(expr => {
@@ -308,22 +308,47 @@ function physicsTick() {
       continue;
     }
 
+    // 2. Bodem / onderkant van de functie hitbox (Weerkaatsing bij botsing van onderen)
+    let hitBottomWall = false;
+    functionsList.forEach(expr => {
+      if (!expr.trim()) return;
+      const vertX = parseVerticalLineX(expr);
+      if (vertX !== null) return;
+
+      const yVal = evaluateMath(expr, car.x);
+      if (yVal !== null) {
+        if (car.y >= yVal - 0.5 && car.y < yVal && car.vy > 0) {
+          hitBottomWall = true;
+        }
+      }
+    });
+
+    if (hitBottomWall) {
+      car.y -= 0.15;
+      car.vy = -Math.abs(car.vy) * 0.6;
+      car.vx = -Math.abs(car.vx) * 0.5;
+      car.grounded = false;
+      car.x += car.vx * subDt;
+      car.y += car.vy * subDt;
+      continue;
+    }
+
     let targetSurfaceY = null;
     let surfaceAngle = 0;
 
-    // 2. Check start platform
+    // 3. Start platform check
     if (Math.abs(car.x - lvl.start.x) <= 1.2 && Math.abs(car.y - lvl.start.y) <= 0.8) {
       targetSurfaceY = lvl.start.y;
       surfaceAngle = 0;
     }
 
-    // 3. Check target platform
+    // 4. Target platform check
     if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.8) {
       targetSurfaceY = lvl.target.y;
       surfaceAngle = 0;
     }
 
-    // 4. Zoek actieve functielijn voor klimmen en dalen
+    // 5. Bovenkant van de lijn hitbox (Rijden over het oppervlak)
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -332,20 +357,22 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
-            const delta = 0.001;
-            const y2 = evaluateMath(expr, car.x + delta);
-            if (y2 !== null) {
-              const slope = (y2 - yVal) / delta;
-              surfaceAngle = Math.atan(slope);
+          if (car.y >= yVal - 0.5 && car.y <= yVal + 0.4 && car.vy <= 0.5) {
+            if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
+              const delta = 0.001;
+              const y2 = evaluateMath(expr, car.x + delta);
+              if (y2 !== null) {
+                const slope = (y2 - yVal) / delta;
+                surfaceAngle = Math.atan(slope);
+              }
+              targetSurfaceY = yVal;
             }
-            targetSurfaceY = yVal;
           }
         }
       });
     }
 
-    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.6) {
+    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.5) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -365,7 +392,6 @@ function physicsTick() {
         const slopeFactor = Math.cos(surfaceAngle);
         car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
       } else if (angleDeg < 0) {
-        // Soepel dalen / afdalen
         car.vx = Math.min(car.vx + 2.5 * enginePower * subDt, 6.0);
       } else {
         car.vx = Math.min(car.vx + 2.0 * enginePower * subDt, 5.5);
@@ -382,7 +408,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.6) {
+      if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.5) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -568,7 +594,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.22', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.24', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
