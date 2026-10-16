@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (CORRECT TOP-SURFACE VS BOTTOM-BARRIER HITBOX) ---
+// --- PHYSICS ENGINE (LOOKAHEAD LINE CHECK: VERTICAL VS SLOPED/HORIZONTAL) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -277,14 +277,15 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Vertical walls check (x = getal)
+    // 1. Check of er een verticale lijn voor me zit (x = getal)
     let hitVerticalWall = false;
     let wallX = 0;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        if (Math.abs(car.x - vertX) <= 0.45) {
+        // Kijk net voor de neus van de auto
+        if (Math.abs((car.x + Math.sign(car.vx || 1) * 0.35) - vertX) <= 0.2) {
           hitVerticalWall = true;
           wallX = vertX;
         }
@@ -292,6 +293,7 @@ function physicsTick() {
     });
 
     if (hitVerticalWall) {
+      // Gebruik de verticale lijn botsingscode
       if (car.vx > 0) {
         car.x = wallX - 0.46;
         car.vx = -Math.abs(car.vx) * 0.7;
@@ -308,31 +310,33 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Onderkant-hitbox / barrière (als de auto van onderen tegen de lijn aankomt)
-    let blockedFromBelow = false;
-    let blockY = 0;
+    // 2. Check of er een schuine of horizontale lijn voor me zit waar de auto tegenaan botst
+    let hitFrontSlopedOrHorizontal = false;
+    let collisionY = 0;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) return;
 
-      const yVal = evaluateMath(expr, car.x);
-      if (yVal !== null) {
-        // Als de auto zich onder de lijn bevindt en omhoog beweegt tegen de onderkant aan
-        if (car.y < yVal && car.y >= yVal - 0.5 && car.vy > 0) {
-          blockedFromBelow = true;
-          blockY = yVal;
+      // Kijk een stukje voor de auto (voorbumper)
+      const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
+      const lineYAtFront = evaluateMath(expr, lookAheadX);
+
+      if (lineYAtFront !== null) {
+        // Als de auto tegen de lijn aan botst (voorbumper raakt de lijn van voren of van onderen)
+        if (Math.abs(car.y - lineYAtFront) <= 0.55) {
+          hitFrontSlopedOrHorizontal = true;
+          collisionY = lineYAtFront;
         }
       }
     });
 
-    if (blockedFromBelow) {
-      car.y = blockY - 0.5;
-      car.vy = -Math.abs(car.vy) * 0.4;
-      car.vx = -Math.abs(car.vx) * 0.4;
-      car.grounded = false;
-      car.x += car.vx * subDt;
-      car.y += car.vy * subDt;
+    if (hitFrontSlopedOrHorizontal) {
+      // Botst tegen de lijn aan en rijdt er tegenaan vast (stopt / drukt zachtjes aan)
+      car.vx = 0;
+      car.vy = 0;
+      car.grounded = true;
+      car.y = collisionY;
       continue;
     }
 
@@ -351,7 +355,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Bovenkant hitbox (Rijden over het oppervlak wanneer de auto er bovenop is of op valt)
+    // 5. Als er geen lijn voor me zit en ik rijd op een lijn: rijd verder over de bovenkant
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -360,7 +364,6 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          // Vang de auto op wanneer hij op of net boven de lijn is (en niet van onderen omhoog komt)
           if (car.y >= yVal - 0.4 && car.y <= yVal + 0.8 && car.vy <= 2.0) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
@@ -598,7 +601,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.27', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.28', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
