@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (STRICT SOLID BARRIER & SOLID UNDER-HITBOX) ---
+// --- PHYSICS ENGINE (CORRECT TOP-SURFACE VS BOTTOM-BARRIER HITBOX) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -308,7 +308,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Stricte onderkant-hitbox / barrière (Voorkom dat de auto van onderen door welke lijn dan ook fasede)
+    // 2. Onderkant-hitbox / barrière (als de auto van onderen tegen de lijn aankomt)
     let blockedFromBelow = false;
     let blockY = 0;
     functionsList.forEach(expr => {
@@ -318,8 +318,8 @@ function physicsTick() {
 
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
-        // Als de auto zich onder de lijn bevindt of er tegenaan botst van onderen
-        if (car.y < yVal && car.y >= yVal - 0.6) {
+        // Als de auto zich onder de lijn bevindt en omhoog beweegt tegen de onderkant aan
+        if (car.y < yVal && car.y >= yVal - 0.5 && car.vy > 0) {
           blockedFromBelow = true;
           blockY = yVal;
         }
@@ -327,7 +327,7 @@ function physicsTick() {
     });
 
     if (blockedFromBelow) {
-      car.y = blockY - 0.6;
+      car.y = blockY - 0.5;
       car.vy = -Math.abs(car.vy) * 0.4;
       car.vx = -Math.abs(car.vx) * 0.4;
       car.grounded = false;
@@ -351,7 +351,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Bovenkant hitbox (Rijden over het oppervlak)
+    // 5. Bovenkant hitbox (Rijden over het oppervlak wanneer de auto er bovenop is of op valt)
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -360,7 +360,8 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          if (car.y >= yVal - 0.5 && car.y <= yVal + 0.5 && car.vy <= 1.0) {
+          // Vang de auto op wanneer hij op of net boven de lijn is (en niet van onderen omhoog komt)
+          if (car.y >= yVal - 0.4 && car.y <= yVal + 0.8 && car.vy <= 2.0) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
               const y2 = evaluateMath(expr, car.x + delta);
@@ -375,7 +376,7 @@ function physicsTick() {
       });
     }
 
-    if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.5) {
+    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.4 && car.y <= targetSurfaceY + 0.8) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -411,7 +412,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (targetSurfaceY !== null && Math.abs(car.y - targetSurfaceY) <= 0.5) {
+      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.4 && car.y <= targetSurfaceY + 0.8) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -597,7 +598,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.26', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.27', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
