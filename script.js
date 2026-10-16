@@ -8,6 +8,15 @@ function parseVerticalLineX(exprStr) {
   return null;
 }
 
+function parseHorizontalLineY(exprStr) {
+  let clean = exprStr.replace(/\s+/g, '').toLowerCase();
+  if (clean.startsWith('y=')) clean = clean.substring(2);
+  if (/^[+-]?\d*\.?\d+$/.test(clean)) {
+    return parseFloat(clean);
+  }
+  return null;
+}
+
 function evaluateMath(exprStr, xVal) {
   try {
     let clean = exprStr.replace(/\s+/g, '').toLowerCase();
@@ -115,7 +124,6 @@ function initApp() {
 }
 
 function injectTutorialUI() {
-  // Voeg stijlen toe voor de tutorial modal
   const style = document.createElement('style');
   style.innerHTML = `
     .tutorial-btn {
@@ -206,7 +214,6 @@ function injectTutorialUI() {
   `;
   document.head.appendChild(style);
 
-  // Maak de knop in de header (naast level indicator)
   const levelIndicator = document.getElementById('levelIndicator');
   if (levelIndicator && levelIndicator.parentElement) {
     const tutBtn = document.createElement('button');
@@ -216,16 +223,9 @@ function injectTutorialUI() {
     levelIndicator.parentElement.appendChild(tutBtn);
   }
 
-  // Maak de modal structuur
   const overlay = document.createElement('div');
   overlay.className = 'tutorial-modal-overlay';
   overlay.id = 'tutorialOverlay';
-  overlay.innerHTML = `
-    .tutorial-modal {
-      <!-- inhoud wordt hieronder gevuld -->
-    }
-  `;
-
   overlay.innerHTML = `
     <div class="tutorial-modal">
       <div class="tutorial-header">
@@ -301,7 +301,6 @@ function ensureTrailingEmptyExpression() {
 function renderExpressionList() {
   const container = document.getElementById('expressionList');
   
-  // Behoud actieve focus en cursorpositie tijdens typen
   const activeEl = document.activeElement;
   const activeIdx = (activeEl && activeEl.classList.contains('math-input')) ? activeEl.dataset.index : null;
   const selStart = activeEl ? activeEl.selectionStart : null;
@@ -353,7 +352,6 @@ function renderExpressionList() {
     });
   });
 
-  // Herstel focus en cursorpositie
   if (activeIdx !== null) {
     const restoredInput = container.querySelector(`.math-input[data-index="${activeIdx}"]`);
     if (restoredInput) {
@@ -427,7 +425,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (v0.1.0.50) ---
+// --- PHYSICS ENGINE (v0.1.0.51 - HORIZONTAL CEILING BLOCK) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -481,7 +479,28 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn
+    // 1.5 Check of we tegen een horizontale lijn (y = getal) aan botsen van onderen (plafond/muur)
+    let hitHorizontalCeiling = false;
+    functionsList.forEach(expr => {
+      if (!expr.trim()) return;
+      const horizY = parseHorizontalLineY(expr);
+      if (horizY !== null) {
+        const carTopY = car.y + 0.5;
+        if (car.y < horizY && carTopY >= horizY - 0.2) {
+          hitHorizontalCeiling = true;
+        }
+      }
+    });
+
+    if (hitHorizontalCeiling) {
+      car.vx = 0;
+      car.vy = 0;
+      car.grounded = true;
+      car.blocked = true;
+      break;
+    }
+
+    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn (maar negeer horizontale lijnen als vloer van onderen)
     let targetSurfaceY = null;
     let surfaceAngle = 0;
     let activeExprIndex = -1;
@@ -507,8 +526,14 @@ function physicsTick() {
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) return;
 
+      const horizY = parseHorizontalLineY(expr);
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
+        // Als het een horizontale lijn is en de auto zit eronder, negeer als vloer om teleportatie te voorkomen
+        if (horizY !== null && car.y < horizY - 0.1) {
+          return;
+        }
+
         if (car.y >= yVal - 0.8 && car.y <= yVal + 1.2) {
           if (yVal > bestYVal) {
             const delta = 0.001;
@@ -525,7 +550,7 @@ function physicsTick() {
       }
     });
 
-    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een DALENDE kruisende lijn raakt
+    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een dalende kruisende lijn raakt
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
       let hitObstacle = false;
       const frontOffset = 0.45;
@@ -781,7 +806,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.50', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.51', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
