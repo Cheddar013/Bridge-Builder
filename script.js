@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (STRICT FRONT-COLLISION STOP & BLOCK) ---
+// --- PHYSICS ENGINE (BUMPER-BASED FRONT COLLISION CHECK) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -309,12 +309,15 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of er een dalende lijn of kruisende schuine lijn voor me zit
+    // 2. Check of de voorbumper van de auto een dalende of kruisende schuine lijn raakt
     let hitDescendingLine = false;
-    let barrierY = 0;
     let hitX = 0;
+    let hitY = 0;
 
-    const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
+    const frontOffset = 0.4;
+    const direction = Math.sign(car.vx || 1);
+    const lookAheadX = car.x + direction * frontOffset;
+
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
@@ -325,18 +328,19 @@ function physicsTick() {
       if (yValAtFront !== null && yValAtCurrent !== null) {
         const slope = yValAtFront - yValAtCurrent;
         if (slope < -0.01) {
-          if (Math.abs(car.y - yValAtFront) <= 0.6) {
+          if (Math.abs(car.y - yValAtFront) <= 0.5) {
             hitDescendingLine = true;
-            barrierY = yValAtFront;
             hitX = lookAheadX;
+            hitY = yValAtFront;
           }
         }
       }
     });
 
     if (hitDescendingLine) {
-      car.x = hitX;
-      car.y = barrierY;
+      // Zet de auto precies zo neer dat de voorbumper op de lijn rust
+      car.x = hitX - direction * frontOffset;
+      car.y = hitY;
       car.vx = 0;
       car.vy = 0;
       car.grounded = true;
@@ -605,7 +609,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.33', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.34', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
