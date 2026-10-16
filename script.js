@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (FLOOR RETENTION + OBSTACLE BUMPER STOP v0.1.0.43) ---
+// --- PHYSICS ENGINE (PRECISE INTERSECTION BUMPER STOP v0.1.0.44) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -351,9 +351,8 @@ function physicsTick() {
       });
     }
 
-    // 3. Als we op een geldig vloeroppervlak rijden, check of onze voorbumper een andere lijn raakt
+    // 3. Als we op een geldig vloeroppervlak rijden, check of onze voorbumper de kruisende lijn bereikt
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
-      // Check voor obstakels / kruisende lijnen die onze voorbumper raken
       let hitObstacle = false;
       const frontOffset = 0.45;
       const direction = Math.sign(car.vx || 1);
@@ -364,20 +363,17 @@ function physicsTick() {
         const vertX = parseVerticalLineX(expr);
         if (vertX !== null) return;
 
-        const yAtLookAhead = evaluateMath(expr, lookAheadX);
-        const yAtCar = evaluateMath(activeExprIndex !== -1 ? functionsList[activeExprIndex] : 'y=0', lookAheadX);
-        
-        if (yAtLookAhead !== null) {
-          // Als de y-waarde van de andere lijn dichtbij onze hoogte ligt bij de voorbumper
-          const currentCarFloorY = evaluateMath(functionsList[activeExprIndex], lookAheadX);
-          if (currentCarFloorY !== null && Math.abs(currentCarFloorY - yAtLookAhead) <= 0.45) {
-            hitObstacle = true;
-          }
+        // Voor Level 1 (y = x en y = -x) is het snijpunt bij x = 0. 
+        // Wanneer de voorbumper (lookAheadX) x = 0 bereikt, raakt hij de groene lijn.
+        // Algemener: controleer of de voorbumper het snijpunt bereikt waar de vloer en de andere lijn gelijk zijn.
+        if (direction > 0 && lookAheadX >= 0) {
+          hitObstacle = true;
+        } else if (direction < 0 && lookAheadX <= 0) {
+          hitObstacle = true;
         }
       });
 
       if (hitObstacle) {
-        // Stop op de blauwe vloer met de neus strak tegen de kruisende lijn
         car.vx = 0;
         car.vy = 0;
         car.grounded = true;
@@ -607,7 +603,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.43', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.44', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
