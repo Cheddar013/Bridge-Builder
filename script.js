@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (FLOOR PRIORITY v0.1.0.42) ---
+// --- PHYSICS ENGINE (FLOOR RETENTION + OBSTACLE BUMPER STOP v0.1.0.43) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -278,7 +278,7 @@ function physicsTick() {
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
-    // 1. Check of er een verticale lijn voor me zit (x = getal)
+    // 1. Check of er een verticale muur voor me zit (x = getal)
     let hitVerticalWall = false;
     let wallX = 0;
     functionsList.forEach(expr => {
@@ -309,7 +309,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Zoek eerst of er een geldig vloeroppervlak onder/bij de auto is
+    // 2. Zoek het actieve vloeroppervlak waar de auto op rijdt
     let targetSurfaceY = null;
     let surfaceAngle = 0;
 
@@ -326,8 +326,9 @@ function physicsTick() {
     }
 
     // Functies check voor vloeroppervlak
+    let activeExprIndex = -1;
     if (targetSurfaceY === null) {
-      functionsList.forEach(expr => {
+      functionsList.forEach((expr, exprIdx) => {
         if (!expr.trim()) return;
         const vertX = parseVerticalLineX(expr);
         if (vertX !== null) return;
@@ -343,14 +344,47 @@ function physicsTick() {
                 surfaceAngle = Math.atan(slope);
               }
               targetSurfaceY = yVal;
+              activeExprIndex = exprIdx;
             }
           }
         }
       });
     }
 
-    // 3. Als we op een geldig vloeroppervlak rijden, volg dat vloerpad
+    // 3. Als we op een geldig vloeroppervlak rijden, check of onze voorbumper een andere lijn raakt
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
+      // Check voor obstakels / kruisende lijnen die onze voorbumper raken
+      let hitObstacle = false;
+      const frontOffset = 0.45;
+      const direction = Math.sign(car.vx || 1);
+      const lookAheadX = car.x + direction * frontOffset;
+
+      functionsList.forEach((expr, exprIdx) => {
+        if (!expr.trim() || exprIdx === activeExprIndex) return;
+        const vertX = parseVerticalLineX(expr);
+        if (vertX !== null) return;
+
+        const yAtLookAhead = evaluateMath(expr, lookAheadX);
+        const yAtCar = evaluateMath(activeExprIndex !== -1 ? functionsList[activeExprIndex] : 'y=0', lookAheadX);
+        
+        if (yAtLookAhead !== null) {
+          // Als de y-waarde van de andere lijn dichtbij onze hoogte ligt bij de voorbumper
+          const currentCarFloorY = evaluateMath(functionsList[activeExprIndex], lookAheadX);
+          if (currentCarFloorY !== null && Math.abs(currentCarFloorY - yAtLookAhead) <= 0.45) {
+            hitObstacle = true;
+          }
+        }
+      });
+
+      if (hitObstacle) {
+        // Stop op de blauwe vloer met de neus strak tegen de kruisende lijn
+        car.vx = 0;
+        car.vy = 0;
+        car.grounded = true;
+        car.blocked = true;
+        break;
+      }
+
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -380,48 +414,7 @@ function physicsTick() {
       car.y += car.vx * Math.sin(surfaceAngle) * subDt;
 
     } else {
-      // 4. Alleen als we NIET op een vloer rijden (in de lucht), check dan voor blokkerende/dalende muren
-      let hitDescendingLine = false;
-      let hitAngle = 0;
-
-      const frontOffset = 0.45;
-      const direction = Math.sign(car.vx || 1);
-      const lookAheadX = car.x + direction * frontOffset;
-
-      functionsList.forEach(expr => {
-        if (!expr.trim()) return;
-        const vertX = parseVerticalLineX(expr);
-        if (vertX !== null) return;
-
-        const yValAtFront = evaluateMath(expr, lookAheadX);
-        const yValAtCurrent = evaluateMath(expr, car.x);
-        if (yValAtFront !== null && yValAtCurrent !== null) {
-          const slopeVal = yValAtFront - yValAtCurrent;
-          if (slopeVal < -0.05 && car.y <= yValAtFront + 0.3) {
-            const yAtLookAhead = evaluateMath(expr, lookAheadX);
-            if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.5) {
-              hitDescendingLine = true;
-
-              const delta = 0.001;
-              const y2 = evaluateMath(expr, lookAheadX + delta);
-              if (y2 !== null) {
-                hitAngle = Math.atan((y2 - yValAtFront) / delta);
-              }
-            }
-          }
-        }
-      });
-
-      if (hitDescendingLine) {
-        car.vx = 0;
-        car.vy = 0;
-        car.rotation = hitAngle;
-        car.grounded = true;
-        car.blocked = true;
-        break;
-      }
-
-      // Vrije val
+      // Vrije val / lucht beweging
       car.grounded = false;
       car.vy += gravity * subDt;
       car.x += car.vx * subDt;
@@ -614,7 +607,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.42', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.43', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
