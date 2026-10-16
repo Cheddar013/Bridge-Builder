@@ -148,7 +148,7 @@ function ensureTrailingEmptyExpression() {
 function renderExpressionList() {
   const container = document.getElementById('expressionList');
   
-  // Sla actieve focus en cursorpositie op om deselectie te voorkomen
+  // Behoud actieve focus en cursorpositie tijdens typen
   const activeEl = document.activeElement;
   const activeIdx = (activeEl && activeEl.classList.contains('math-input')) ? activeEl.dataset.index : null;
   const selStart = activeEl ? activeEl.selectionStart : null;
@@ -200,7 +200,7 @@ function renderExpressionList() {
     });
   });
 
-  // Herstel focus en cursorpositie op het juiste invoerveld
+  // Herstel focus en cursorpositie
   if (activeIdx !== null) {
     const restoredInput = container.querySelector(`.math-input[data-index="${activeIdx}"]`);
     if (restoredInput) {
@@ -274,7 +274,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE INTERSECTION BUMPER STOP v0.1.0.45) ---
+// --- PHYSICS ENGINE (HIGHEST SURFACE PRIORITY v0.1.0.46) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -328,75 +328,52 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Zoek het actieve vloeroppervlak waar de auto op rijdt
+    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn (bovenste oppervlak)
     let targetSurfaceY = null;
     let surfaceAngle = 0;
+    let activeExprIndex = -1;
+    let bestYVal = -Infinity;
 
     // Start platform check
     if (Math.abs(car.x - lvl.start.x) <= 1.2 && Math.abs(car.y - lvl.start.y) <= 0.8) {
       targetSurfaceY = lvl.start.y;
       surfaceAngle = 0;
+      bestYVal = lvl.start.y;
     }
 
     // Target platform check
     if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.8) {
       targetSurfaceY = lvl.target.y;
       surfaceAngle = 0;
+      bestYVal = lvl.target.y;
     }
 
-    // Functies check voor vloeroppervlak
-    let activeExprIndex = -1;
-    if (targetSurfaceY === null) {
-      functionsList.forEach((expr, exprIdx) => {
-        if (!expr.trim()) return;
-        const vertX = parseVerticalLineX(expr);
-        if (vertX !== null) return;
+    // Functies check: kies bij kruisende lijnen altijd de hoogste geldige y-waarde
+    functionsList.forEach((expr, exprIdx) => {
+      if (!expr.trim()) return;
+      const vertX = parseVerticalLineX(expr);
+      if (vertX !== null) return;
 
-        const yVal = evaluateMath(expr, car.x);
-        if (yVal !== null) {
-          if (car.y >= yVal - 0.6 && car.y <= yVal + 0.8) {
-            if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
-              const delta = 0.001;
-              const y2 = evaluateMath(expr, car.x + delta);
-              if (y2 !== null) {
-                const slope = (y2 - yVal) / delta;
-                surfaceAngle = Math.atan(slope);
-              }
-              targetSurfaceY = yVal;
-              activeExprIndex = exprIdx;
+      const yVal = evaluateMath(expr, car.x);
+      if (yVal !== null) {
+        if (car.y >= yVal - 0.8 && car.y <= yVal + 1.2) {
+          if (yVal > bestYVal) {
+            const delta = 0.001;
+            const y2 = evaluateMath(expr, car.x + delta);
+            if (y2 !== null) {
+              const slope = (y2 - yVal) / delta;
+              surfaceAngle = Math.atan(slope);
             }
+            targetSurfaceY = yVal;
+            activeExprIndex = exprIdx;
+            bestYVal = yVal;
           }
         }
-      });
-    }
-
-    // 3. Als we op een geldig vloeroppervlak rijden, check of onze voorbumper de kruisende lijn bereikt
-    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
-      let hitObstacle = false;
-      const frontOffset = 0.45;
-      const direction = Math.sign(car.vx || 1);
-      const lookAheadX = car.x + direction * frontOffset;
-
-      functionsList.forEach((expr, exprIdx) => {
-        if (!expr.trim() || exprIdx === activeExprIndex) return;
-        const vertX = parseVerticalLineX(expr);
-        if (vertX !== null) return;
-
-        if (direction > 0 && lookAheadX >= 0) {
-          hitObstacle = true;
-        } else if (direction < 0 && lookAheadX <= 0) {
-          hitObstacle = true;
-        }
-      });
-
-      if (hitObstacle) {
-        car.vx = 0;
-        car.vy = 0;
-        car.grounded = true;
-        car.blocked = true;
-        break;
       }
+    });
 
+    // 3. Als we op een geldig vloeroppervlak rijden
+    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -433,7 +410,7 @@ function physicsTick() {
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.6 && car.y <= targetSurfaceY + 0.8) {
+      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -619,7 +596,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.45', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.46', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
