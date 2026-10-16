@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (DUAL-HITBOX: TOP = RIDE, BOTTOM = BOUNCE) ---
+// --- PHYSICS ENGINE (DUAL-SIDE HITBOX: TOP = RIDE, BOTTOM = SOLID CEILING) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -308,8 +308,9 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Bodem / onderkant van de functie hitbox (Weerkaatsing bij botsing van onderen)
-    let hitBottomWall = false;
+    // 2. Onderkant hitbox (Solide plafond / blokkade tegen van onderen erdoorheen rijden)
+    let hitBottomHitbox = false;
+    let ceilingY = 0;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
@@ -317,16 +318,17 @@ function physicsTick() {
 
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
-        if (car.y >= yVal - 0.5 && car.y < yVal && car.vy > 0) {
-          hitBottomWall = true;
+        // Als de auto onder de lijn zit (of er tegenaan springt van onderen)
+        if (car.y < yVal && car.y >= yVal - 0.6 && car.vy > 0) {
+          hitBottomHitbox = true;
+          ceilingY = yVal;
         }
       }
     });
 
-    if (hitBottomWall) {
-      car.y -= 0.15;
-      car.vy = -Math.abs(car.vy) * 0.6;
-      car.vx = -Math.abs(car.vx) * 0.5;
+    if (hitBottomHitbox) {
+      car.y = ceilingY - 0.6;
+      car.vy = -Math.abs(car.vy) * 0.5;
       car.grounded = false;
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
@@ -348,7 +350,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Bovenkant van de lijn hitbox (Rijden over het oppervlak)
+    // 5. Bovenkant hitbox (Rijden / Klimmen en Dalen over de lijn)
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -357,7 +359,7 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          if (car.y >= yVal - 0.5 && car.y <= yVal + 0.4 && car.vy <= 0.5) {
+          if (car.y >= yVal - 0.5 && car.y <= yVal + 0.5 && car.vy <= 1.0) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
               const y2 = evaluateMath(expr, car.x + delta);
@@ -594,7 +596,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.24', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.25', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
