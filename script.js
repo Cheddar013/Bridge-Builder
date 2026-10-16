@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (BUMPER-BASED FRONT COLLISION CHECK) ---
+// --- PHYSICS ENGINE (PRECISE ALIGNED COLLISION SNAP) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -313,8 +313,9 @@ function physicsTick() {
     let hitDescendingLine = false;
     let hitX = 0;
     let hitY = 0;
+    let hitAngle = 0;
 
-    const frontOffset = 0.4;
+    const frontOffset = 0.35;
     const direction = Math.sign(car.vx || 1);
     const lookAheadX = car.x + direction * frontOffset;
 
@@ -326,21 +327,28 @@ function physicsTick() {
       const yValAtFront = evaluateMath(expr, lookAheadX);
       const yValAtCurrent = evaluateMath(expr, car.x);
       if (yValAtFront !== null && yValAtCurrent !== null) {
-        const slope = yValAtFront - yValAtCurrent;
-        if (slope < -0.01) {
-          if (Math.abs(car.y - yValAtFront) <= 0.5) {
+        const slopeVal = yValAtFront - yValAtCurrent;
+        if (slopeVal < -0.01 || Math.abs(slopeVal) >= 0) {
+          const yAtLookAhead = evaluateMath(expr, lookAheadX);
+          if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
             hitDescendingLine = true;
             hitX = lookAheadX;
-            hitY = yValAtFront;
+            hitY = yAtLookAhead;
+
+            const delta = 0.001;
+            const y2 = evaluateMath(expr, hitX + delta);
+            if (y2 !== null) {
+              hitAngle = Math.atan((y2 - hitY) / delta);
+            }
           }
         }
       }
     });
 
     if (hitDescendingLine) {
-      // Zet de auto precies zo neer dat de voorbumper op de lijn rust
-      car.x = hitX - direction * frontOffset;
+      car.x = hitX;
       car.y = hitY;
+      car.rotation = hitAngle;
       car.vx = 0;
       car.vy = 0;
       car.grounded = true;
@@ -609,7 +617,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.34', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.35', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
