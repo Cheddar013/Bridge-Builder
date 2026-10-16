@@ -82,7 +82,7 @@ const LEVELS = [
 let currentLevelIdx = 0;
 let functionsList = [];
 let isDriving = false;
-let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false, blocked: false };
+let car = { x: -6, y: -2, vx: 1.5, vy: 0, rotation: 0, grounded: true, crashed: false, won: false, blocked: false, activeExpr: null };
 let particles = [];
 
 // Canvas Geometry
@@ -243,7 +243,8 @@ function resetCarState() {
     grounded: true,
     crashed: false,
     won: false,
-    blocked: false
+    blocked: false,
+    activeExpr: null
   };
   particles = [];
 
@@ -274,7 +275,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (HIGHEST SURFACE PRIORITY v0.1.0.46) ---
+// --- PHYSICS ENGINE (SURFACE LOCKING / NO TELEPORT v0.1.0.47) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -321,6 +322,7 @@ function physicsTick() {
       }
       car.vy = Math.max(Math.abs(car.vx) * 0.8, 3.5);
       car.grounded = false;
+      car.activeExpr = null;
       car.vy += gravity * subDt;
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
@@ -328,36 +330,56 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn (bovenste oppervlak)
+    // 2. Bepaal vloeroppervlak met Surface Locking om teleporteren te voorkomen
     let targetSurfaceY = null;
     let surfaceAngle = 0;
-    let activeExprIndex = -1;
-    let bestYVal = -Infinity;
 
     // Start platform check
     if (Math.abs(car.x - lvl.start.x) <= 1.2 && Math.abs(car.y - lvl.start.y) <= 0.8) {
       targetSurfaceY = lvl.start.y;
       surfaceAngle = 0;
-      bestYVal = lvl.start.y;
-    }
-
+      car.activeExpr = 'start';
+    } 
     // Target platform check
-    if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.8) {
+    else if (Math.abs(car.x - lvl.target.x) <= 1.2 && Math.abs(car.y - lvl.target.y) <= 0.8) {
       targetSurfaceY = lvl.target.y;
       surfaceAngle = 0;
-      bestYVal = lvl.target.y;
-    }
+      car.activeExpr = 'target';
+    } 
+    // Als we al op een actieve functie-lijn rijden, blijf daar strict op gefixeerd!
+    else if (car.grounded && typeof car.activeExpr === 'number') {
+      const expr = functionsList[car.activeExpr];
+      if (expr && expr.trim()) {
+        const yVal = evaluateMath(expr, car.x);
+        if (yVal !== null && Math.abs(car.y - yVal) <= 1.0) {
+          targetSurfaceY = yVal;
+          const delta = 0.001;
+          const y2 = evaluateMath(expr, car.x + delta);
+          if (y2 !== null) {
+            const slope = (y2 - yVal) / delta;
+            surfaceAngle = Math.atan(slope);
+          }
+        } else {
+          // Verloren contact met actieve lijn
+          car.grounded = false;
+          car.activeExpr = null;
+        }
+      } else {
+        car.grounded = false;
+        car.activeExpr = null;
+      }
+    } 
+    // In de lucht of nog geen actieve lijn: zoek de beste landing van boven
+    else {
+      let bestY = -Infinity;
+      functionsList.forEach((expr, exprIdx) => {
+        if (!expr.trim()) return;
+        const vertX = parseVerticalLineX(expr);
+        if (vertX !== null) return;
 
-    // Functies check: kies bij kruisende lijnen altijd de hoogste geldige y-waarde
-    functionsList.forEach((expr, exprIdx) => {
-      if (!expr.trim()) return;
-      const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) return;
-
-      const yVal = evaluateMath(expr, car.x);
-      if (yVal !== null) {
-        if (car.y >= yVal - 0.8 && car.y <= yVal + 1.2) {
-          if (yVal > bestYVal) {
+        const yVal = evaluateMath(expr, car.x);
+        if (yVal !== null) {
+          if (car.y >= yVal - 0.8 && car.y <= yVal + 0.8 && yVal > bestY) {
             const delta = 0.001;
             const y2 = evaluateMath(expr, car.x + delta);
             if (y2 !== null) {
@@ -365,15 +387,15 @@ function physicsTick() {
               surfaceAngle = Math.atan(slope);
             }
             targetSurfaceY = yVal;
-            activeExprIndex = exprIdx;
-            bestYVal = yVal;
+            car.activeExpr = exprIdx;
+            bestY = yVal;
           }
         }
-      }
-    });
+      });
+    }
 
-    // 3. Als we op een geldig vloeroppervlak rijden
-    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
+    // 3. Verwerk beweging op de ondergrond of vrije val
+    if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 0.8) {
       car.y = targetSurfaceY;
       car.vy = 0;
       car.grounded = true;
@@ -403,14 +425,14 @@ function physicsTick() {
       car.y += car.vx * Math.sin(surfaceAngle) * subDt;
 
     } else {
-      // Vrije val / lucht beweging
       car.grounded = false;
+      car.activeExpr = null;
       car.vy += gravity * subDt;
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
       car.rotation = Math.atan2(car.vy, car.vx || 0.1);
 
-      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
+      if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 0.8) {
         car.y = targetSurfaceY;
         car.vy = 0;
         car.grounded = true;
@@ -596,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.46', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.47', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
