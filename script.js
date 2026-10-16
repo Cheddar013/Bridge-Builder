@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (SMOOTH LANDING & DRIVING) ---
+// --- PHYSICS ENGINE (DESCENDING LINE BARRIER CHECK) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -308,32 +308,35 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of er een schuine of horizontale lijn voor me zit wanneer de auto in de lucht is
-    let hitFrontSlopedOrHorizontal = false;
-    let collisionY = 0;
-    if (!car.grounded) {
-      functionsList.forEach(expr => {
-        if (!expr.trim()) return;
-        const vertX = parseVerticalLineX(expr);
-        if (vertX !== null) return;
+    // 2. Check of er een dalende lijn of kruisende schuine lijn voor me zit
+    let hitDescendingLine = false;
+    let barrierY = 0;
 
-        const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
-        const lineYAtFront = evaluateMath(expr, lookAheadX);
+    const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
+    functionsList.forEach(expr => {
+      if (!expr.trim()) return;
+      const vertX = parseVerticalLineX(expr);
+      if (vertX !== null) return;
 
-        if (lineYAtFront !== null) {
-          if (Math.abs(car.y - lineYAtFront) <= 0.6) {
-            hitFrontSlopedOrHorizontal = true;
-            collisionY = lineYAtFront;
+      const yValAtFront = evaluateMath(expr, lookAheadX);
+      const yValAtCurrent = evaluateMath(expr, car.x);
+      if (yValAtFront !== null && yValAtCurrent !== null) {
+        const slope = yValAtFront - yValAtCurrent;
+        // Als het een dalende lijn is in de rijrichting (of een andere lijn die het pad kruist)
+        if (slope < -0.01) {
+          if (Math.abs(car.y - yValAtFront) <= 0.6) {
+            hitDescendingLine = true;
+            barrierY = yValAtFront;
           }
         }
-      });
-    }
+      }
+    });
 
-    if (hitFrontSlopedOrHorizontal) {
-      car.vx = Math.max(car.vx * 0.5, 0.5);
+    if (hitDescendingLine) {
+      car.vx = 0;
       car.vy = 0;
       car.grounded = true;
-      car.y = collisionY;
+      car.y = barrierY;
       continue;
     }
 
@@ -352,7 +355,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Zoek de dichtstbijzijnde lijn onder of bij de auto om op te landen/rijden
+    // 5. Zoek de lijn om over te rijden
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -361,7 +364,6 @@ function physicsTick() {
 
         const yVal = evaluateMath(expr, car.x);
         if (yVal !== null) {
-          // Ruurdere marge zodat vallende auto's direct worden opgevangen
           if (car.y >= yVal - 0.6 && car.y <= yVal + 0.8) {
             if (targetSurfaceY === null || Math.abs(yVal - car.y) < Math.abs(targetSurfaceY - car.y)) {
               const delta = 0.001;
@@ -599,7 +601,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.30', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.31', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
