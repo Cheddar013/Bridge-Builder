@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE BUMPER SNAP & ALIGNMENT) ---
+// --- PHYSICS ENGINE (PRECISE BUMPER SNAP & ALIGNMENT v0.1.0.39) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -285,7 +285,7 @@ function physicsTick() {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        if (Math.abs((car.x + Math.sign(car.vx || 1) * 0.35) - vertX) <= 0.2) {
+        if (Math.abs((car.x + Math.sign(car.vx || 1) * 0.45) - vertX) <= 0.2) {
           hitVerticalWall = true;
           wallX = vertX;
         }
@@ -315,7 +315,7 @@ function physicsTick() {
     let hitY = 0;
     let hitAngle = 0;
 
-    const frontOffset = 0.35;
+    const frontOffset = 0.45; // Exact de halve auto-lengte (18px / 40 scale)
     const direction = Math.sign(car.vx || 1);
     const lookAheadX = car.x + direction * frontOffset;
 
@@ -346,9 +346,9 @@ function physicsTick() {
     });
 
     if (hitDescendingLine) {
-      // Plaats het centrum zo dat de voorbumper exact op het raakpunt op de lijn zit[cite: 8]
-      car.x = hitX - Math.cos(hitAngle) * 0.45;
-      car.y = hitY - Math.sin(hitAngle) * 0.45;
+      // Plaats het centrum exact zo dat de voorbumper op het raakpunt rust
+      car.x = hitX - direction * Math.cos(hitAngle) * frontOffset;
+      car.y = hitY - direction * Math.sin(hitAngle) * frontOffset;
       car.rotation = hitAngle;
       car.vx = 0;
       car.vy = 0;
@@ -618,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.38', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.39', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
