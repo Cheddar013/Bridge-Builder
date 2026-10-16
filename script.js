@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (DESCENDING LINE BARRIER CHECK) ---
+// --- PHYSICS ENGINE (PRECISE COLLISION SNAP) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -311,6 +311,7 @@ function physicsTick() {
     // 2. Check of er een dalende lijn of kruisende schuine lijn voor me zit
     let hitDescendingLine = false;
     let barrierY = 0;
+    let hitX = 0;
 
     const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
     functionsList.forEach(expr => {
@@ -322,21 +323,22 @@ function physicsTick() {
       const yValAtCurrent = evaluateMath(expr, car.x);
       if (yValAtFront !== null && yValAtCurrent !== null) {
         const slope = yValAtFront - yValAtCurrent;
-        // Als het een dalende lijn is in de rijrichting (of een andere lijn die het pad kruist)
         if (slope < -0.01) {
           if (Math.abs(car.y - yValAtFront) <= 0.6) {
             hitDescendingLine = true;
             barrierY = yValAtFront;
+            hitX = lookAheadX;
           }
         }
       }
     });
 
     if (hitDescendingLine) {
+      car.x = hitX;
+      car.y = barrierY;
       car.vx = 0;
       car.vy = 0;
       car.grounded = true;
-      car.y = barrierY;
       continue;
     }
 
@@ -601,7 +603,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.31', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.32', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
