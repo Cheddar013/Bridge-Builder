@@ -253,6 +253,12 @@ function injectTutorialUI() {
           <li><span class="code-tag">{x &lt; getal}</span>: De lijn loopt slechts tot dat specifieke getal op de x-as en gaat niet verder (bijv. <span class="code-tag">y = x {x &lt; 3}</span>).</li>
           <li><span class="code-tag">{x &gt; getal}</span>: De lijn begint pas ná dat specifieke getal op de x-as en is niet eerder zichtbaar (bijv. <span class="code-tag">y = 2 {x &gt; -1}</span>).</li>
         </ul>
+
+        <h3>5. Rekenkundige Bewerkingen</h3>
+        <ul>
+          <li><strong>Breuken / Delen (<span class="code-tag">/</span>):</strong> Breuken of delingen noteer je met een schuine streep (bijv. <span class="code-tag">y = (1/2)x + 2</span> of <span class="code-tag">y = x / 3</span>).</li>
+          <li><strong>Vermenigvuldigen / Maal (<span class="code-tag">*</span>):</strong> Vermenigvuldigingen noteer je met een sterretje (bijv. <span class="code-tag">y = 2 * x</span>).</li>
+        </ul>
       </div>
     </div>
   `;
@@ -432,7 +438,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (v0.1.0.53 - DOMAIN RESTRICTIONS TUTORIAL UPDATE) ---
+// --- PHYSICS ENGINE (v0.1.0.54) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -818,7 +824,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.53', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.54', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
