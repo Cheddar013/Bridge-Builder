@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (LOOKAHEAD LINE CHECK: VERTICAL VS SLOPED/HORIZONTAL) ---
+// --- PHYSICS ENGINE (AIRBORNE FRONT LINE CHECK VS DRIVING SURFACE) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -284,7 +284,6 @@ function physicsTick() {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
       if (vertX !== null) {
-        // Kijk net voor de neus van de auto
         if (Math.abs((car.x + Math.sign(car.vx || 1) * 0.35) - vertX) <= 0.2) {
           hitVerticalWall = true;
           wallX = vertX;
@@ -293,7 +292,6 @@ function physicsTick() {
     });
 
     if (hitVerticalWall) {
-      // Gebruik de verticale lijn botsingscode
       if (car.vx > 0) {
         car.x = wallX - 0.46;
         car.vx = -Math.abs(car.vx) * 0.7;
@@ -310,29 +308,28 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of er een schuine of horizontale lijn voor me zit waar de auto tegenaan botst
+    // 2. Check of er een schuine of horizontale lijn voor me zit wanneer de auto in de lucht is
     let hitFrontSlopedOrHorizontal = false;
     let collisionY = 0;
-    functionsList.forEach(expr => {
-      if (!expr.trim()) return;
-      const vertX = parseVerticalLineX(expr);
-      if (vertX !== null) return;
+    if (!car.grounded) {
+      functionsList.forEach(expr => {
+        if (!expr.trim()) return;
+        const vertX = parseVerticalLineX(expr);
+        if (vertX !== null) return;
 
-      // Kijk een stukje voor de auto (voorbumper)
-      const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
-      const lineYAtFront = evaluateMath(expr, lookAheadX);
+        const lookAheadX = car.x + Math.sign(car.vx || 1) * 0.45;
+        const lineYAtFront = evaluateMath(expr, lookAheadX);
 
-      if (lineYAtFront !== null) {
-        // Als de auto tegen de lijn aan botst (voorbumper raakt de lijn van voren of van onderen)
-        if (Math.abs(car.y - lineYAtFront) <= 0.55) {
-          hitFrontSlopedOrHorizontal = true;
-          collisionY = lineYAtFront;
+        if (lineYAtFront !== null) {
+          if (Math.abs(car.y - lineYAtFront) <= 0.6) {
+            hitFrontSlopedOrHorizontal = true;
+            collisionY = lineYAtFront;
+          }
         }
-      }
-    });
+      });
+    }
 
     if (hitFrontSlopedOrHorizontal) {
-      // Botst tegen de lijn aan en rijdt er tegenaan vast (stopt / drukt zachtjes aan)
       car.vx = 0;
       car.vy = 0;
       car.grounded = true;
@@ -355,7 +352,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Als er geen lijn voor me zit en ik rijd op een lijn: rijd verder over de bovenkant
+    // 5. Rijd verder over de bovenkant van de lijn als we erop zijn
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -601,7 +598,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.28', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.29', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
