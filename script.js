@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE BUMPER SNAP & ALIGNMENT v0.1.0.39) ---
+// --- PHYSICS ENGINE (SMूथ BUMPER STOP v0.1.0.40) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -311,11 +311,9 @@ function physicsTick() {
 
     // 2. Check of de voorbumper een dalende/blokkerende lijn raakt
     let hitDescendingLine = false;
-    let hitX = 0;
-    let hitY = 0;
     let hitAngle = 0;
 
-    const frontOffset = 0.45; // Exact de halve auto-lengte (18px / 40 scale)
+    const frontOffset = 0.45;
     const direction = Math.sign(car.vx || 1);
     const lookAheadX = car.x + direction * frontOffset;
 
@@ -330,15 +328,13 @@ function physicsTick() {
         const slopeVal = yValAtFront - yValAtCurrent;
         if (slopeVal < -0.05 && car.y <= yValAtFront + 0.3) {
           const yAtLookAhead = evaluateMath(expr, lookAheadX);
-          if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
+          if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.5) {
             hitDescendingLine = true;
-            hitX = lookAheadX;
-            hitY = yAtLookAhead;
 
             const delta = 0.001;
-            const y2 = evaluateMath(expr, hitX + delta);
+            const y2 = evaluateMath(expr, lookAheadX + delta);
             if (y2 !== null) {
-              hitAngle = Math.atan((y2 - hitY) / delta);
+              hitAngle = Math.atan((y2 - yValAtFront) / delta);
             }
           }
         }
@@ -346,12 +342,10 @@ function physicsTick() {
     });
 
     if (hitDescendingLine) {
-      // Plaats het centrum exact zo dat de voorbumper op het raakpunt rust
-      car.x = hitX - direction * Math.cos(hitAngle) * frontOffset;
-      car.y = hitY - direction * Math.sin(hitAngle) * frontOffset;
-      car.rotation = hitAngle;
+      // Geen geforceerde teleport/verschuiving: stop direct op de huidige positie en neem de hoek aan
       car.vx = 0;
       car.vy = 0;
+      car.rotation = hitAngle;
       car.grounded = true;
       car.blocked = true;
       break;
@@ -618,7 +612,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.39', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.40', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
