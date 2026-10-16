@@ -226,6 +226,7 @@ function injectTutorialUI() {
   const overlay = document.createElement('div');
   overlay.className = 'tutorial-modal-overlay';
   overlay.id = 'tutorialOverlay';
+
   overlay.innerHTML = `
     <div class="tutorial-modal">
       <div class="tutorial-header">
@@ -237,7 +238,7 @@ function injectTutorialUI() {
         
         <h3>1. De standaard formule: <span class="code-tag">ax + b</span></h3>
         <ul>
-          <li><strong>a (helling):</strong> Hoe groter het getal a, hoe steiler de lijn omhoog loopt. Als je er een minvoor teken voor zet (bijv. <span class="code-tag">-2x</span>), dan gaat de lijn steil omlaag.</li>
+          <li><strong>a (helling):</strong> Hoe groter het getal a, hoe steiler de lijn omhoog loopt. Als je er een minteken voor zet (bijv. <span class="code-tag">-2x</span>), dan gaat de lijn steil omlaag.</li>
           <li><strong>b (startgetal):</strong> Dit bepaalt de hoogte van de lijn en geeft precies aan waar de lijn de y-as raakt.</li>
         </ul>
 
@@ -246,6 +247,12 @@ function injectTutorialUI() {
 
         <h3>3. Verticale lijn: <span class="code-tag">x = getal</span></h3>
         <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de y-as. Het getal bepaalt op welke horizontale positie de lijn de x-as raakt (bijv. <span class="code-tag">x = 2</span>). Deze verticale lijnen fungeren ook als muren waar de auto tegenaan kan botsen!</p>
+
+        <h3>4. Domeinbeperkingen (Lijn inkorten)</h3>
+        <ul>
+          <li><span class="code-tag">{x &lt; getal}</span>: De lijn loopt slechts tot dat specifieke getal op de x-as en gaat niet verder (bijv. <span class="code-tag">y = x {x &lt; 3}</span>).</li>
+          <li><span class="code-tag">{x &gt; getal}</span>: De lijn begint pas ná dat specifieke getal op de x-as en is niet eerder zichtbaar (bijv. <span class="code-tag">y = 2 {x &gt; -1}</span>).</li>
+        </ul>
       </div>
     </div>
   `;
@@ -425,7 +432,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (v0.1.0.52 - FAST HORIZONTAL ACCELERATION) ---
+// --- PHYSICS ENGINE (v0.1.0.53 - DOMAIN RESTRICTIONS TUTORIAL UPDATE) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -597,7 +604,6 @@ function physicsTick() {
           car.vx -= 2.0 * subDt;
         }
       } else if (Math.abs(angleDeg) < 1) {
-        // Horizontale lijn (evenredig aan x-as): snelle continue acceleratie tot hogere topsnelheid (9.0)
         const activeExpr = activeExprIndex !== -1 ? functionsList[activeExprIndex] : '';
         const isHoriz = parseHorizontalLineY(activeExpr) !== null;
         if (isHoriz) {
@@ -812,7 +818,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.52', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.53', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
