@@ -254,7 +254,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (DUAL-SIDE HITBOX: TOP = RIDE, BOTTOM = SOLID CEILING) ---
+// --- PHYSICS ENGINE (STRICT SOLID BARRIER & SOLID UNDER-HITBOX) ---
 function physicsTick() {
   if (car.crashed) return;
 
@@ -273,7 +273,7 @@ function physicsTick() {
   const gravity = -16;
   const enginePower = 3.5;
 
-  const substeps = 10;
+  const substeps = 12;
   const subDt = dt / substeps;
 
   for (let step = 0; step < substeps; step++) {
@@ -308,9 +308,9 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Onderkant hitbox (Solide plafond / blokkade tegen van onderen erdoorheen rijden)
-    let hitBottomHitbox = false;
-    let ceilingY = 0;
+    // 2. Stricte onderkant-hitbox / barrière (Voorkom dat de auto van onderen door welke lijn dan ook fasede)
+    let blockedFromBelow = false;
+    let blockY = 0;
     functionsList.forEach(expr => {
       if (!expr.trim()) return;
       const vertX = parseVerticalLineX(expr);
@@ -318,17 +318,18 @@ function physicsTick() {
 
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
-        // Als de auto onder de lijn zit (of er tegenaan springt van onderen)
-        if (car.y < yVal && car.y >= yVal - 0.6 && car.vy > 0) {
-          hitBottomHitbox = true;
-          ceilingY = yVal;
+        // Als de auto zich onder de lijn bevindt of er tegenaan botst van onderen
+        if (car.y < yVal && car.y >= yVal - 0.6) {
+          blockedFromBelow = true;
+          blockY = yVal;
         }
       }
     });
 
-    if (hitBottomHitbox) {
-      car.y = ceilingY - 0.6;
-      car.vy = -Math.abs(car.vy) * 0.5;
+    if (blockedFromBelow) {
+      car.y = blockY - 0.6;
+      car.vy = -Math.abs(car.vy) * 0.4;
+      car.vx = -Math.abs(car.vx) * 0.4;
       car.grounded = false;
       car.x += car.vx * subDt;
       car.y += car.vy * subDt;
@@ -350,7 +351,7 @@ function physicsTick() {
       surfaceAngle = 0;
     }
 
-    // 5. Bovenkant hitbox (Rijden / Klimmen en Dalen over de lijn)
+    // 5. Bovenkant hitbox (Rijden over het oppervlak)
     if (targetSurfaceY === null) {
       functionsList.forEach(expr => {
         if (!expr.trim()) return;
@@ -596,7 +597,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.25', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.26', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
