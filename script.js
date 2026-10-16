@@ -274,7 +274,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (HIGHEST SURFACE PRIORITY + BUMPER BLOCK v0.1.0.48) ---
+// --- PHYSICS ENGINE (PRECISE DESCENDING BUMPER STOP v0.1.0.49) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -328,7 +328,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn (voor soepele overgang van groen naar blauw)
+    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn
     let targetSurfaceY = null;
     let surfaceAngle = 0;
     let activeExprIndex = -1;
@@ -372,7 +372,7 @@ function physicsTick() {
       }
     });
 
-    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een kruisende/dalende lijn (zoals oranje) raakt
+    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een DALENDE kruisende lijn (zoals oranje) raakt
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
       let hitObstacle = false;
       const frontOffset = 0.45;
@@ -388,11 +388,12 @@ function physicsTick() {
         const yAtCar = evaluateMath(expr, car.x);
         if (yAtLookAhead !== null && yAtCar !== null) {
           const slopeVal = yAtLookAhead - yAtCar;
-          const currentCarFloorY = evaluateMath(functionsList[activeExprIndex], lookAheadX);
           
-          if (currentCarFloorY !== null && Math.abs(currentCarFloorY - yAtLookAhead) <= 0.6) {
-            // Als het een dalende lijn is of we botsen ertegen aan
-            if (slopeVal < 0 || Math.abs(currentCarFloorY - yAtLookAhead) < 0.35) {
+          // ALLEEN dalende lijnen (slopeVal < -0.05) mogen blokkeren. 
+          // Stijgende lijnen (zoals de blauwe lijn) zijn vloeren en mogen de auto nooit stoppen!
+          if (slopeVal < -0.05) {
+            const currentCarFloorY = evaluateMath(functionsList[activeExprIndex], lookAheadX);
+            if (currentCarFloorY !== null && Math.abs(currentCarFloorY - yAtLookAhead) <= 0.5) {
               hitObstacle = true;
             }
           }
@@ -629,7 +630,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.48', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.49', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
