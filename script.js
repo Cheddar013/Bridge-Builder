@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE ALIGNED COLLISION SNAP) ---
+// --- PHYSICS ENGINE (CORRECT FRONT COLLISION VS SURFACE DRIVING) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -309,7 +309,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of de voorbumper van de auto een dalende of kruisende schuine lijn raakt
+    // 2. Check of de voorbumper van de auto een daadwerkelijk dalende / blokkerende lijn raakt
     let hitDescendingLine = false;
     let hitX = 0;
     let hitY = 0;
@@ -328,7 +328,8 @@ function physicsTick() {
       const yValAtCurrent = evaluateMath(expr, car.x);
       if (yValAtFront !== null && yValAtCurrent !== null) {
         const slopeVal = yValAtFront - yValAtCurrent;
-        if (slopeVal < -0.01 || Math.abs(slopeVal) >= 0) {
+        // Alleen triggeren bij dalende/blokkerende lijnen in de rijrichting
+        if (slopeVal < -0.05) {
           const yAtLookAhead = evaluateMath(expr, lookAheadX);
           if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
             hitDescendingLine = true;
@@ -617,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.35', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.36', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
