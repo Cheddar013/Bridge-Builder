@@ -100,6 +100,7 @@ function initApp() {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   
+  injectTutorialUI();
   loadLevel(currentLevelIdx);
 
   document.getElementById('addExprBtn').addEventListener('click', () => addFunctionRow(''));
@@ -111,6 +112,158 @@ function initApp() {
 
   setInterval(physicsTick, 1000 / 60);
   requestAnimationFrame(renderLoop);
+}
+
+function injectTutorialUI() {
+  // Voeg stijlen toe voor de tutorial modal
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .tutorial-btn {
+      background: #f0f0f0;
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .tutorial-btn:hover {
+      background: #e2e2e2;
+    }
+    .tutorial-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .tutorial-modal {
+      background: #fff;
+      width: 550px;
+      max-width: 90%;
+      max-height: 85vh;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    .tutorial-header {
+      padding: 16px 20px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tutorial-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #333;
+    }
+    .tutorial-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #666;
+    }
+    .tutorial-body {
+      padding: 20px;
+      overflow-y: auto;
+      color: #444;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .tutorial-body h3 {
+      margin-top: 15px;
+      margin-bottom: 5px;
+      color: #2d70b3;
+      font-size: 1.05rem;
+    }
+    .tutorial-body ul {
+      margin: 5px 0 15px 20px;
+      padding: 0;
+    }
+    .tutorial-body li {
+      margin-bottom: 6px;
+    }
+    .code-tag {
+      background: #f1f3f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+      color: #c84b4b;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Maak de knop in de header (naast level indicator)
+  const levelIndicator = document.getElementById('levelIndicator');
+  if (levelIndicator && levelIndicator.parentElement) {
+    const tutBtn = document.createElement('button');
+    tutBtn.className = 'tutorial-btn';
+    tutBtn.innerHTML = '<i class="fa-solid fa-circle-question"></i> Uitleg';
+    tutBtn.addEventListener('click', openTutorialModal);
+    levelIndicator.parentElement.appendChild(tutBtn);
+  }
+
+  // Maak de modal structuur
+  const overlay = document.createElement('div');
+  overlay.className = 'tutorial-modal-overlay';
+  overlay.id = 'tutorialOverlay';
+  overlay.innerHTML = `
+    .tutorial-modal {
+      <!-- inhoud wordt hieronder gevuld -->
+    }
+  `;
+
+  overlay.innerHTML = `
+    <div class="tutorial-modal">
+      <div class="tutorial-header">
+        <h2><i class="fa-solid fa-book-open" style="color: #2d70b3; margin-right: 8px;"></i> Wiskunde Formules Uitleg</h2>
+        <button class="tutorial-close-btn" id="closeTutBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="tutorial-body">
+        <p>Welkom bij de puzzel! Om de auto naar de finish te leiden kun je gebruikmaken van verschillende soorten formules. Hier is een korte handleiding:</p>
+        
+        <h3>1. De standaard formule: <span class="code-tag">ax + b</span></h3>
+        <ul>
+          <li><strong>a (helling):</strong> Hoe groter het getal a, hoe steiler de lijn omhoog loopt. Als je er een minvoor teken voor zet (bijv. <span class="code-tag">-2x</span>), dan gaat de lijn steil omlaag.</li>
+          <li><strong>b (startgetal):</strong> Dit bepaalt de hoogte van de lijn en geeft precies aan waar de lijn de y-as raakt.</li>
+        </ul>
+
+        <h3>2. Horizontale lijn: <span class="code-tag">y = getal</span></h3>
+        <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de x-as. Het getal bepaalt op welke hoogte de lijn de y-as raakt (bijv. <span class="code-tag">y = 2</span>).</p>
+
+        <h3>3. Verticale lijn: <span class="code-tag">x = getal</span></h3>
+        <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de y-as. Het getal bepaalt op welke horizontale positie de lijn de x-as raakt (bijv. <span class="code-tag">x = 2</span>). Deze verticale lijnen fungeren ook als muren waar de auto tegenaan kan botsen!</p>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById('closeTutBtn').addEventListener('click', closeTutorialModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeTutorialModal();
+  });
+}
+
+function openTutorialModal() {
+  document.getElementById('tutorialOverlay').style.display = 'flex';
+}
+
+function closeTutorialModal() {
+  document.getElementById('tutorialOverlay').style.display = 'none';
 }
 
 function resizeCanvas() {
@@ -174,7 +327,7 @@ function renderExpressionList() {
       </div>
       <div class="expr-content">
         <div class="math-input-wrapper">
-          <input type="text" class="math-input" value="${exprStr}" placeholder="typ een functie, bijv. y = x of x = 2" data-index="${index}" />
+          <input type="text" class="math-input" value="${exprStr}" placeholder="typ een functie, bijv. y = ax + b of x = 2" data-index="${index}" />
         </div>
         <button class="delete-row-btn" data-index="${index}"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -274,7 +427,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE DESCENDING BUMPER STOP v0.1.0.49) ---
+// --- PHYSICS ENGINE (v0.1.0.50) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -372,7 +525,7 @@ function physicsTick() {
       }
     });
 
-    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een DALENDE kruisende lijn (zoals oranje) raakt
+    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een DALENDE kruisende lijn raakt
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
       let hitObstacle = false;
       const frontOffset = 0.45;
@@ -389,8 +542,6 @@ function physicsTick() {
         if (yAtLookAhead !== null && yAtCar !== null) {
           const slopeVal = yAtLookAhead - yAtCar;
           
-          // ALLEEN dalende lijnen (slopeVal < -0.05) mogen blokkeren. 
-          // Stijgende lijnen (zoals de blauwe lijn) zijn vloeren en mogen de auto nooit stoppen!
           if (slopeVal < -0.05) {
             const currentCarFloorY = evaluateMath(functionsList[activeExprIndex], lookAheadX);
             if (currentCarFloorY !== null && Math.abs(currentCarFloorY - yAtLookAhead) <= 0.5) {
@@ -630,7 +781,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.49', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.50', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
