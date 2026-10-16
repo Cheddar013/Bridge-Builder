@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (CORRECT FRONT COLLISION VS SURFACE DRIVING) ---
+// --- PHYSICS ENGINE (SMART FRONT COLLISION VS LANDING) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -309,7 +309,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of de voorbumper van de auto een daadwerkelijk dalende / blokkerende lijn raakt
+    // 2. Check of de voorbumper een dalende/blokkerende lijn raakt (alleen bij zijwaartse nadering, niet bij vallen van boven)
     let hitDescendingLine = false;
     let hitX = 0;
     let hitY = 0;
@@ -328,8 +328,8 @@ function physicsTick() {
       const yValAtCurrent = evaluateMath(expr, car.x);
       if (yValAtFront !== null && yValAtCurrent !== null) {
         const slopeVal = yValAtFront - yValAtCurrent;
-        // Alleen triggeren bij dalende/blokkerende lijnen in de rijrichting
-        if (slopeVal < -0.05) {
+        // Alleen blokkeren als de lijn daalt én de auto zich op/onder de hoogte van de lijn bevindt (geen landing van boven)
+        if (slopeVal < -0.05 && car.y <= yValAtFront + 0.3) {
           const yAtLookAhead = evaluateMath(expr, lookAheadX);
           if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
             hitDescendingLine = true;
@@ -618,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.36', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.37', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
