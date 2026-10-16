@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (SMART FRONT COLLISION VS LANDING) ---
+// --- PHYSICS ENGINE (PRECISE BUMPER SNAP & ALIGNMENT) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -309,7 +309,7 @@ function physicsTick() {
       continue;
     }
 
-    // 2. Check of de voorbumper een dalende/blokkerende lijn raakt (alleen bij zijwaartse nadering, niet bij vallen van boven)
+    // 2. Check of de voorbumper een dalende/blokkerende lijn raakt
     let hitDescendingLine = false;
     let hitX = 0;
     let hitY = 0;
@@ -328,7 +328,6 @@ function physicsTick() {
       const yValAtCurrent = evaluateMath(expr, car.x);
       if (yValAtFront !== null && yValAtCurrent !== null) {
         const slopeVal = yValAtFront - yValAtCurrent;
-        // Alleen blokkeren als de lijn daalt én de auto zich op/onder de hoogte van de lijn bevindt (geen landing van boven)
         if (slopeVal < -0.05 && car.y <= yValAtFront + 0.3) {
           const yAtLookAhead = evaluateMath(expr, lookAheadX);
           if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
@@ -347,8 +346,9 @@ function physicsTick() {
     });
 
     if (hitDescendingLine) {
-      car.x = hitX;
-      car.y = hitY;
+      // Plaats het centrum zo dat de voorbumper exact op het raakpunt op de lijn zit[cite: 8]
+      car.x = hitX - Math.cos(hitAngle) * 0.45;
+      car.y = hitY - Math.sin(hitAngle) * 0.45;
       car.rotation = hitAngle;
       car.vx = 0;
       car.vy = 0;
@@ -618,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.37', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.38', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
