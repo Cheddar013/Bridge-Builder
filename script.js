@@ -242,7 +242,7 @@ function injectTutorialUI() {
         </ul>
 
         <h3>2. Horizontale lijn: <span class="code-tag">y = getal</span></h3>
-        <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de x-as. Het getal bepaalt op welke hoogte de lijn de y-as raakt (bijv. <span class="code-tag">y = 2</span>).</p>
+        <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de x-as. Het getal bepaalt op welke hoogte de lijn de y-as raakt (bijv. <span class="code-tag">y = 2</span>). Op deze horizontale lijnen accelereert de auto extra snel tot een hoge topsnelheid!</p>
 
         <h3>3. Verticale lijn: <span class="code-tag">x = getal</span></h3>
         <p>Voor het getal dat je invult komt er een rechte lijn die evenredig (parallel) is aan de y-as. Het getal bepaalt op welke horizontale positie de lijn de x-as raakt (bijv. <span class="code-tag">x = 2</span>). Deze verticale lijnen fungeren ook als muren waar de auto tegenaan kan botsen!</p>
@@ -425,7 +425,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (v0.1.0.51 - HORIZONTAL CEILING BLOCK) ---
+// --- PHYSICS ENGINE (v0.1.0.52 - FAST HORIZONTAL ACCELERATION) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -500,7 +500,7 @@ function physicsTick() {
       break;
     }
 
-    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn (maar negeer horizontale lijnen als vloer van onderen)
+    // 2. Zoek het beste vloeroppervlak met prioriteit voor de hoogste lijn
     let targetSurfaceY = null;
     let surfaceAngle = 0;
     let activeExprIndex = -1;
@@ -529,7 +529,6 @@ function physicsTick() {
       const horizY = parseHorizontalLineY(expr);
       const yVal = evaluateMath(expr, car.x);
       if (yVal !== null) {
-        // Als het een horizontale lijn is en de auto zit eronder, negeer als vloer om teleportatie te voorkomen
         if (horizY !== null && car.y < horizY - 0.1) {
           return;
         }
@@ -550,7 +549,7 @@ function physicsTick() {
       }
     });
 
-    // 3. Als we op een geldig vloeroppervlak rijden, check of de voorbumper een dalende kruisende lijn raakt
+    // 3. Als we op een geldig vloeroppervlak rijden
     if (targetSurfaceY !== null && car.y >= targetSurfaceY - 0.8 && car.y <= targetSurfaceY + 1.2) {
       let hitObstacle = false;
       const frontOffset = 0.45;
@@ -598,7 +597,14 @@ function physicsTick() {
           car.vx -= 2.0 * subDt;
         }
       } else if (Math.abs(angleDeg) < 1) {
-        car.vx = Math.min(car.vx + 0.5 * subDt, 6.0);
+        // Horizontale lijn (evenredig aan x-as): snelle continue acceleratie tot hogere topsnelheid (9.0)
+        const activeExpr = activeExprIndex !== -1 ? functionsList[activeExprIndex] : '';
+        const isHoriz = parseHorizontalLineY(activeExpr) !== null;
+        if (isHoriz) {
+          car.vx = Math.min(car.vx + 3.5 * subDt, 9.0);
+        } else {
+          car.vx = Math.min(car.vx + 0.5 * subDt, 6.0);
+        }
       } else if (angleDeg > 0 && angleDeg <= 45) {
         const slopeFactor = Math.cos(surfaceAngle);
         car.vx = Math.min(car.vx + enginePower * subDt * slopeFactor, 4.5);
@@ -806,7 +812,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.51', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.52', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
