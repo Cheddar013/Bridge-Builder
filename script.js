@@ -148,6 +148,12 @@ function ensureTrailingEmptyExpression() {
 function renderExpressionList() {
   const container = document.getElementById('expressionList');
   
+  // Sla actieve focus en cursorpositie op om deselectie te voorkomen
+  const activeEl = document.activeElement;
+  const activeIdx = (activeEl && activeEl.classList.contains('math-input')) ? activeEl.dataset.index : null;
+  const selStart = activeEl ? activeEl.selectionStart : null;
+  const selEnd = activeEl ? activeEl.selectionEnd : null;
+
   const oldRows = container.querySelectorAll('.function-row');
   oldRows.forEach(r => r.remove());
 
@@ -193,6 +199,19 @@ function renderExpressionList() {
       renderExpressionList();
     });
   });
+
+  // Herstel focus en cursorpositie op het juiste invoerveld
+  if (activeIdx !== null) {
+    const restoredInput = container.querySelector(`.math-input[data-index="${activeIdx}"]`);
+    if (restoredInput) {
+      restoredInput.focus();
+      if (selStart !== null && selEnd !== null) {
+        try {
+          restoredInput.setSelectionRange(selStart, selEnd);
+        } catch (err) {}
+      }
+    }
+  }
 }
 
 function addFunctionRow(initialVal = '') {
@@ -255,7 +274,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (PRECISE INTERSECTION BUMPER STOP v0.1.0.44) ---
+// --- PHYSICS ENGINE (PRECISE INTERSECTION BUMPER STOP v0.1.0.45) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -363,9 +382,6 @@ function physicsTick() {
         const vertX = parseVerticalLineX(expr);
         if (vertX !== null) return;
 
-        // Voor Level 1 (y = x en y = -x) is het snijpunt bij x = 0. 
-        // Wanneer de voorbumper (lookAheadX) x = 0 bereikt, raakt hij de groene lijn.
-        // Algemener: controleer of de voorbumper het snijpunt bereikt waar de vloer en de andere lijn gelijk zijn.
         if (direction > 0 && lookAheadX >= 0) {
           hitObstacle = true;
         } else if (direction < 0 && lookAheadX <= 0) {
@@ -603,7 +619,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.44', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.45', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
