@@ -255,7 +255,7 @@ function triggerConfetti(targetX, targetY) {
   }
 }
 
-// --- PHYSICS ENGINE (SMूथ BUMPER STOP v0.1.0.40) ---
+// --- PHYSICS ENGINE (PRECISE BUMPER SNAP & ANGLE MATCH v0.1.0.41) ---
 function physicsTick() {
   if (car.crashed || car.blocked) return;
 
@@ -311,6 +311,8 @@ function physicsTick() {
 
     // 2. Check of de voorbumper een dalende/blokkerende lijn raakt
     let hitDescendingLine = false;
+    let hitX = 0;
+    let hitY = 0;
     let hitAngle = 0;
 
     const frontOffset = 0.45;
@@ -328,13 +330,15 @@ function physicsTick() {
         const slopeVal = yValAtFront - yValAtCurrent;
         if (slopeVal < -0.05 && car.y <= yValAtFront + 0.3) {
           const yAtLookAhead = evaluateMath(expr, lookAheadX);
-          if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.5) {
+          if (yAtLookAhead !== null && Math.abs(car.y - yAtLookAhead) <= 0.6) {
             hitDescendingLine = true;
+            hitX = lookAheadX;
+            hitY = yAtLookAhead;
 
             const delta = 0.001;
-            const y2 = evaluateMath(expr, lookAheadX + delta);
+            const y2 = evaluateMath(expr, hitX + delta);
             if (y2 !== null) {
-              hitAngle = Math.atan((y2 - yValAtFront) / delta);
+              hitAngle = Math.atan((y2 - hitY) / delta);
             }
           }
         }
@@ -342,10 +346,12 @@ function physicsTick() {
     });
 
     if (hitDescendingLine) {
-      // Geen geforceerde teleport/verschuiving: stop direct op de huidige positie en neem de hoek aan
+      // Zet de auto precies zo neer dat de voorbumper exact op de lijn rust en neem de hoek van de lijn aan
+      car.x = hitX - direction * Math.cos(hitAngle) * frontOffset;
+      car.y = hitY - direction * Math.sin(hitAngle) * frontOffset;
+      car.rotation = hitAngle;
       car.vx = 0;
       car.vy = 0;
-      car.rotation = hitAngle;
       car.grounded = true;
       car.blocked = true;
       break;
@@ -612,7 +618,7 @@ function drawVersionText() {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('v0.1.0.40', canvas.width - 16, canvas.height - 16);
+  ctx.fillText('v0.1.0.41', canvas.width - 16, canvas.height - 16);
   ctx.restore();
 }
 
